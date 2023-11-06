@@ -1,0 +1,3 @@
+[submodule "kEn"]
+	path = kEn
+	url = https://github.com/kubazuch/kEn.git
