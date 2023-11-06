@@ -5,6 +5,7 @@
 
 #include "kEn/camera/camera.h"
 #include "kEn/core/transform.h"
+#include "kEn/renderer/texture.h"
 
 class fizzbuzz_layer : public kEn::layer
 {
@@ -15,11 +16,11 @@ public:
 		camera_ = kEn::perspective_camera(glm::radians(70.f), 1.0f, 0.01f, 100.f);
 		camera_.set_position({ 0,0,2 });
 
-		float vertices[4 * (3 + 4)] = {
-				-0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f,
-				 0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f,
-				-0.5f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f,
-				 0.5f,  0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f,
+		float vertices[4 * (3 + 4 + 2)] = {
+				-0.5f, -0.5f, 0.0f,  0.0f, 0.0f,
+				 0.5f, -0.5f, 0.0f,  1.0f, 0.0f,
+				-0.5f,  0.5f, 0.0f,  0.0f, 1.0f,
+				 0.5f,  0.5f, 0.0f,  1.0f, 1.0f
 		};
 
 		unsigned int indices[6] = { 0, 1, 2, 1, 2, 3 };
@@ -29,7 +30,7 @@ public:
 		{
 			kEn::buffer_layout layout = {
 				{kEn::shader_data_types::float3, "a_Position"},
-				{kEn::shader_data_types::float4, "a_Color"}
+				{kEn::shader_data_types::float2, "a_TexCoord"}
 			};
 
 			vertex_buffer_->set_layout(layout);
@@ -41,12 +42,15 @@ public:
 		vertex_array_->set_index_buffer(index_buffer_);
 
 		shader_ = kEn::shader::create("test");
+		texture_ = kEn::texture2D::create("l.jpg");
+
+		shader_->bind();
+		shader_->set_int("u_Texture", 0);
 	}
 
 	void on_update(double delta, double time) override
 	{
 		shader_->bind();
-		shader_->set_float("iTime", time);
 		//camera_.set_rotation(glm::rotate(camera_.rotation(), (float) delta, { 0, 1.0f, 0.0f }));
 		transform_.rotate({ 0, 1, 0 }, (float) delta);
 		transform_.set_pos({ 0, 0, sin(time)});
@@ -59,6 +63,7 @@ public:
 
 		kEn::renderer::begin_scene(camera_);
 		{
+			texture_->bind();
 			kEn::renderer::submit(shader_, vertex_array_, transform_);
 		}
 		kEn::renderer::end_scene();
@@ -92,6 +97,7 @@ private:
 
 	std::shared_ptr<kEn::vertex_array> vertex_array_;
 	std::shared_ptr<kEn::shader> shader_;
+	std::shared_ptr<kEn::texture> texture_;
 };
 
 class sandbox : public kEn::application
