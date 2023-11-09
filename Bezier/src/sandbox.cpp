@@ -26,7 +26,7 @@ public:
 		unsigned int indices[6] = { 0, 1, 2, 1, 2, 3 };
 
 		vertex_array_ = kEn::vertex_array::create();
-		auto vertex_buffer_ = kEn::vertex_buffer::create(vertices, sizeof vertices);
+		vertex_buffer_ = kEn::mutable_vertex_buffer::create(vertices, sizeof vertices);
 		{
 			kEn::buffer_layout layout = {
 				{kEn::shader_data_types::float3, "a_Position"},
@@ -52,8 +52,12 @@ public:
 	{
 		shader_->bind();
 		//camera_.set_rotation(glm::rotate(camera_.rotation(), (float) delta, { 0, 1.0f, 0.0f }));
-		transform_.rotate({ 0, 1, 0 }, (float) delta);
-		transform_.set_pos({ 0, 0, sin(time)});
+		//transform_.rotate({ 0, 1, 0 }, (float) delta);
+		//transform_.set_pos({ 0, 0, sin(time)});
+		vertex_buffer_->modify_data([time](void* buffer) {
+			auto vertices = static_cast<float*>(buffer);
+			vertices[2] = 0.25f*glm::cos(3*time);
+		});
 	}
 
 	void on_render() override
@@ -98,6 +102,8 @@ private:
 	std::shared_ptr<kEn::vertex_array> vertex_array_;
 	std::shared_ptr<kEn::shader> shader_;
 	std::shared_ptr<kEn::texture> texture_;
+
+	std::shared_ptr<kEn::mutable_vertex_buffer> vertex_buffer_;
 };
 
 class sandbox : public kEn::application
