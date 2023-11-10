@@ -3,6 +3,7 @@
 
 #include <imgui/imgui.h>
 
+#include "vertex.h"
 #include "kEn/camera/camera.h"
 #include "kEn/core/transform.h"
 #include "kEn/renderer/texture.h"
@@ -12,34 +13,14 @@ class fizzbuzz_layer : public kEn::layer
 public:
 	fizzbuzz_layer() : layer("FizzBuzz")
 	{
-		//camera_ = kEn::orthographic_camera(-1.f, 1.f, -1.f, 1.f);
-		camera_ = kEn::perspective_camera(glm::radians(70.f), 1.0f, 0.01f, 100.f);
-		camera_.set_position({ 0,0,2 });
+		dispatcher_ = std::make_unique<kEn::event_dispatcher>();
 
-		float vertices[4 * (3 + 4 + 2)] = {
-				-0.5f, -0.5f, 0.0f,  0.0f, 0.0f,
-				 0.5f, -0.5f, 0.0f,  1.0f, 0.0f,
-				-0.5f,  0.5f, 0.0f,  0.0f, 1.0f,
-				 0.5f,  0.5f, 0.0f,  1.0f, 1.0f
-		};
+		camera_ = std::make_shared<kEn::orthographic_camera>(-16.f/9.f, 16.f / 9.f, -1.f, 1.f);
+		//camera_ = std::make_shared<kEn::perspective_camera>(glm::radians(70.f), 16.f/9.f, 0.01f, 100.f);
+		//camera_->set_position({ 0,0,2 });
+		dispatcher_->subscribe<kEn::window_resize_event>(KEN_EVENT_SUBSCRIBER(camera_->on_window_resize));
 
-		unsigned int indices[6] = { 0, 1, 2, 1, 2, 3 };
-
-		vertex_array_ = kEn::vertex_array::create();
-		vertex_buffer_ = kEn::mutable_vertex_buffer::create(vertices, sizeof vertices);
-		{
-			kEn::buffer_layout layout = {
-				{kEn::shader_data_types::float3, "a_Position"},
-				{kEn::shader_data_types::float2, "a_TexCoord"}
-			};
-
-			vertex_buffer_->set_layout(layout);
-		}
-
-		auto index_buffer_ = kEn::index_buffer::create(indices, 6);
-
-		vertex_array_->add_vertex_buffer(vertex_buffer_);
-		vertex_array_->set_index_buffer(index_buffer_);
+		vertex_array_ = vertex::generate_vertex_buffer();
 
 		shader_ = kEn::shader::create("test");
 		texture_ = kEn::texture2D::create("l.jpg");
@@ -52,12 +33,12 @@ public:
 	{
 		shader_->bind();
 		//camera_.set_rotation(glm::rotate(camera_.rotation(), (float) delta, { 0, 1.0f, 0.0f }));
-		//transform_.rotate({ 0, 1, 0 }, (float) delta);
+		transform_.rotate({ 0, 1, 0 }, (float) delta);
 		//transform_.set_pos({ 0, 0, sin(time)});
-		vertex_buffer_->modify_data([time](void* buffer) {
-			auto vertices = static_cast<float*>(buffer);
-			vertices[2] = 0.25f*glm::cos(3*time);
-		});
+		//vertex_buffer_->modify_data([time](void* buffer) {
+		//	auto vertices = static_cast<float*>(buffer);
+		//	vertices[2] = 0.25f*glm::cos(3*time);
+		//});
 	}
 
 	void on_render() override
@@ -93,12 +74,18 @@ public:
 		ImGui::End();
 	}
 
+	void on_event(kEn::base_event& event) override
+	{
+		dispatcher_->dispatch(event);
+	}
+
 private:
 	float time_ = 0;
 
-	kEn::camera camera_;
+	std::shared_ptr<kEn::camera> camera_;
 	kEn::transform transform_;
 
+	std::unique_ptr<kEn::event_dispatcher> dispatcher_;
 	std::shared_ptr<kEn::vertex_array> vertex_array_;
 	std::shared_ptr<kEn::shader> shader_;
 	std::shared_ptr<kEn::texture> texture_;
