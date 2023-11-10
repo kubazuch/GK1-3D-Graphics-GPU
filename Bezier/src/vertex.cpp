@@ -19,14 +19,14 @@ std::unique_ptr<kEn::vertex_array> vertex::generate_vertex_buffer(int N, int M)
 		{
 			const int index = i * N + j;
 			const float x = (float)j / (float)(N - 1);
-			const float y = (float)i / (float)(N - 1);
+			const float z = (float)i / (float)(N - 1);
 
 			const int offset = stride * index;
-			vertices[offset]     = x-0.5f;    // x
-			vertices[offset + 1] = y - 0.5f;    // y
-			vertices[offset + 2] = 0.0f; // z
-			vertices[offset + 3] = x;    // u
-			vertices[offset + 4] = y;    // v
+			vertices[offset]     = x - 0.5f; // x
+			vertices[offset + 1] = 0.0f;     // y
+			vertices[offset + 2] = z - 0.5f; // z
+			vertices[offset + 3] = x;        // u
+			vertices[offset + 4] = z;        // v
 
 			if (i == M-1 || j == N - 1)
 				continue;

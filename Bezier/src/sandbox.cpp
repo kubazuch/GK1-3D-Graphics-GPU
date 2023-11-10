@@ -15,12 +15,13 @@ public:
 	{
 		dispatcher_ = std::make_unique<kEn::event_dispatcher>();
 
-		camera_ = std::make_shared<kEn::orthographic_camera>(-16.f/9.f, 16.f / 9.f, -1.f, 1.f);
-		//camera_ = std::make_shared<kEn::perspective_camera>(glm::radians(70.f), 16.f/9.f, 0.01f, 100.f);
-		//camera_->set_position({ 0,0,2 });
+		//camera_ = std::make_shared<kEn::orthographic_camera>(-16.f/9.f, 16.f / 9.f, -1.f, 1.f);
+		camera_ = std::make_shared<kEn::perspective_camera>(glm::radians(70.f), 16.f/9.f, 0.01f, 100.f);
+		camera_->set_position({ 0,0,2 });
 		dispatcher_->subscribe<kEn::window_resize_event>(KEN_EVENT_SUBSCRIBER(camera_->on_window_resize));
 
 		vertex_array_ = vertex::generate_vertex_buffer();
+		vertex_buffer_ = std::dynamic_pointer_cast<kEn::mutable_vertex_buffer, kEn::vertex_buffer>(vertex_array_->vertex_buffers()[0]);
 
 		shader_ = kEn::shader::create("test");
 		texture_ = kEn::texture2D::create("l.jpg");
@@ -33,12 +34,12 @@ public:
 	{
 		shader_->bind();
 		//camera_.set_rotation(glm::rotate(camera_.rotation(), (float) delta, { 0, 1.0f, 0.0f }));
-		transform_.rotate({ 0, 1, 0 }, (float) delta);
+		transform_.rotate({ 1, 0, 0 }, (float) delta);
 		//transform_.set_pos({ 0, 0, sin(time)});
-		//vertex_buffer_->modify_data([time](void* buffer) {
-		//	auto vertices = static_cast<float*>(buffer);
-		//	vertices[2] = 0.25f*glm::cos(3*time);
-		//});
+		vertex_buffer_->modify_data([time](void* buffer) {
+			auto vertices = static_cast<float*>(buffer);
+			vertices[1] = 0.25f*glm::cos(3*time);
+		});
 	}
 
 	void on_render() override
