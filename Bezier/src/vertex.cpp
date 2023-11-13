@@ -28,7 +28,7 @@ std::unique_ptr<kEn::vertex_array> vertex::generate_vertex_buffer(int N, int M)
 			vertices[offset + 3] = x;        // u
 			vertices[offset + 4] = z;        // v
 
-			if (i == M-1 || j == N - 1)
+			if (i == M - 1 || j == N - 1)
 				continue;
 
 			indices[k]     = index;
