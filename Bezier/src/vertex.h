@@ -1,13 +1,28 @@
 #pragma once
 
-#include "kEn/renderer/vertex_array.h"
+#include <ostream>
 
-class vertex
+#include "glm/gtx/string_cast.hpp"
+#include "kEn/core/transform.h"
+
+struct vertex
 {
-private:
+	vertex() : selected_(false) {}
+	vertex(const vertex&)
+	{
+		selected_ = false;
+	}
+
+	friend std::ostream& operator<<(std::ostream& os, const vertex& obj)
+	{
+		return os
+			<< "transform_: " << glm::to_string(obj.transform_.local_to_world_matrix())
+			<< " selected_: " << obj.selected_;
+	}
+
+	kEn::transform transform_;
+	bool selected_;
 
 public:
-	static kEn::buffer_layout vertex_layout;
-
-	static std::unique_ptr<kEn::vertex_array> generate_vertex_buffer(int N = 4, int M = 4);
+	static glm::vec4 vertex_color;
 };
