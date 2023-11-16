@@ -7,11 +7,7 @@
 
 struct vertex
 {
-	vertex() : selected_(false) {}
-	vertex(const vertex&)
-	{
-		selected_ = false;
-	}
+	vertex(int x, int y) : selected_(false), x(x), y(y) {}
 
 	friend std::ostream& operator<<(std::ostream& os, const vertex& obj)
 	{
@@ -22,6 +18,7 @@ struct vertex
 
 	kEn::transform transform_;
 	bool selected_;
+	int x, y;
 
 public:
 	static glm::vec4 vertex_color;

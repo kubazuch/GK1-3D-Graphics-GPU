@@ -3,7 +3,7 @@
 
 #include <imgui/imgui.h>
 
-#include "bezier_plane.h"
+#include "bezier_surface.h"
 #include "vertex.h"
 #include "glm/gtc/type_ptr.hpp"
 #include "imgui/imgui_internal.h"
@@ -11,6 +11,7 @@
 #include "kEn/camera/camera.h"
 #include "kEn/core/transform.h"
 #include "kEn/event/mouse_events.h"
+#include "kEn/renderer/framebuffer.h"
 #include "kEn/renderer/texture.h"
 #include "kEn/renderer/mesh/obj_model.h"
 
@@ -25,7 +26,7 @@ public:
 		camera_ = std::make_shared<kEn::perspective_camera>(glm::radians(70.f), 16.f/9.f, 0.01f, 100.f);
 		camera_->set_position({ 0,0,1 });
 		dispatcher_->subscribe<kEn::window_resize_event>(KEN_EVENT_SUBSCRIBER(camera_->on_window_resize));
-		dispatcher_->subscribe<kEn::mouse_button_pressed_event>(KEN_EVENT_SUBSCRIBER(plane.on_mouse_click));
+		dispatcher_->subscribe<kEn::mouse_button_pressed_event>(KEN_EVENT_SUBSCRIBER(surface_.on_mouse_click));
 	}
 
 	void on_update(double delta, double time) override
@@ -37,19 +38,19 @@ public:
 		delta /= 3;
 		if(kEn::input::is_key_pressed(kEn::key::up))
 		{
-			plane.transform().rotate({ 1,0,0 }, -(float)delta);
+			surface_.transform().rotate({ 1,0,0 }, -(float)delta);
 		}
 		 if(kEn::input::is_key_pressed(kEn::key::down))
 		{
-			plane.transform().rotate({ 1,0,0 }, (float)delta);
+			surface_.transform().rotate({ 1,0,0 }, (float)delta);
 		}
 		 if (kEn::input::is_key_pressed(kEn::key::left))
 		{
-			plane.transform().rotate({ 0,0,1 }, (float)delta);
+			surface_.transform().rotate({ 0,0,1 }, (float)delta);
 		}
 		 if (kEn::input::is_key_pressed(kEn::key::right))
 		{
-			plane.transform().rotate({ 0,0,1 }, -(float)delta);
+			surface_.transform().rotate({ 0,0,1 }, -(float)delta);
 		}
 	}
 
@@ -57,10 +58,9 @@ public:
 	{
 		kEn::render_command::set_clear_color({ 0.61f, 0.2f, 0.83f, 1.0f });
 		kEn::render_command::clear();
-
 		kEn::renderer::begin_scene(camera_);
 		{
-			plane.render();
+			surface_.render();
 		}
 		kEn::renderer::end_scene();
 	}
@@ -82,22 +82,9 @@ public:
 
 		ImGuiIO& io = ImGui::GetIO();
 		ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
-
-		if(auto selected = plane.selected_point())
-		{
-			if (ImGuizmo::Manipulate(glm::value_ptr(camera_->view_matrix()), glm::value_ptr(camera_->projection_matrix()), ImGuizmo::TRANSLATE, ImGuizmo::LOCAL, glm::value_ptr(selected->transform_.local_to_world_matrix()), NULL, NULL, NULL, NULL))
-			{
-				plane.vertex_moved();
-			}
-
-			ImGui::InputFloat3("Tr", glm::value_ptr(plane.selected_point()->transform_.pos()));
-		}
-
-		const auto pos = kEn::input::get_mouse_pos();
-		ImGui::Text("Mouse pos: %.1f, %.1f", pos.x, pos.y);
-
-		ImGui::Checkbox("Wireframe", &plane.draw_wireframe);
 		ImGui::End();
+
+		surface_.imgui(*camera_);
 	}
 
 	void on_event(kEn::base_event& event) override
@@ -108,7 +95,7 @@ public:
 private:
 	float time_ = 0;
 
-	bezier_plane plane;
+	bezier_surface surface_;
 	std::shared_ptr<kEn::camera> camera_;
 	std::unique_ptr<kEn::event_dispatcher> dispatcher_;
 };

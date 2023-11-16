@@ -1,7 +1,9 @@
 #pragma once
 
 #include "vertex.h"
+#include "kEn/camera/camera.h"
 #include "kEn/event/mouse_events.h"
+#include "kEn/renderer/framebuffer.h"
 #include "kEn/renderer/texture.h"
 #include "kEn/renderer/vertex_array.h"
 #include "kEn/renderer/mesh/obj_model.h"
@@ -11,11 +13,11 @@ namespace kEn
 	class shader;
 }
 
-class bezier_plane
+class bezier_surface
 {
 public:
-	bezier_plane(int N = 4, int M = 4);
-	~bezier_plane();
+	bezier_surface(int N = 4, int M = 4);
+	~bezier_surface();
 
 	kEn::transform& transform() { return transform_; }
 	vertex* selected_point() const { return selected_point_; }
@@ -23,6 +25,7 @@ public:
 
 	void render() const;
 	void vertex_moved() const;
+	void imgui(const kEn::camera&);
 
 	bool draw_wireframe = false;
 private:
@@ -32,8 +35,9 @@ private:
 	std::vector<std::vector<vertex*>> control_points_;
 	vertex* selected_point_;
 	kEn::transform transform_;
+	std::shared_ptr<kEn::framebuffer> framebuffer_;
 
-	std::shared_ptr<kEn::shader> bezier_surface_shader_, control_point_shader_;
+	std::unique_ptr<kEn::shader> bezier_surface_shader_, control_point_shader_;
 	std::shared_ptr<kEn::texture> bezier_surface_texture_, control_point_texture_;
 	kEn::obj_model control_point_model_;
 
