@@ -5,14 +5,17 @@ layout (quads, equal_spacing, ccw) in;
 
 uniform mat4 u_M;
 uniform mat4 u_VP;
+uniform bool u_Geometry;
 
 // received from Tessellation Control Shader - all texture coordinates for the patch vertices
 in vec2 TextureCoord[];
 
 // send to Fragment Shader for coloring
 out vec2 v_TexCoord;
+out vec3 v_Normal;
 
-uniform vec3 u_ControlPoints[16];
+const int N = 4;
+uniform vec3 u_ControlPoints[N * N];
 
 void main()
 {
@@ -32,42 +35,58 @@ void main()
     vec2 t1 = (t11 - t10) * u + t10;
     v_TexCoord = (t1 - t0) * v + t0;
 
-    vec3 control_points[4];
-    vec3 new_points[4];
+    
+    // ----------------------------------------------------------------------
+    // de Casteljau
 
-    for(int j = 0; j < 4; ++j) {
-        for(int i = 0; i < 4; ++i) {
-             control_points[i] = u_ControlPoints[4*i + j];
-        }   
+    vec3 intermediate_point[N];
+    vec3 point[N];
 
-        for(int k = 1; k < 4; ++k) {
-            for(int i = 0; i < 4-k; ++i) {
-                control_points[i] = (1 - v_TexCoord.x) * control_points[i] + v_TexCoord.x * control_points[i+1];
+    vec3 intermediate_tangent_x[N-1];
+    vec3 tangent_x[N];
+
+    vec3 intermediate_tangent_y[N];
+    vec3 tangent_y[N-1];
+
+    for(int j = 0; j < N; ++j) {
+        for(int i = 0; i < N; ++i) {
+            intermediate_point[i] = u_ControlPoints[i * N + j];
+            if(i < N-1)
+                intermediate_tangent_x[i] = u_ControlPoints[(i + 1) * N + j] - u_ControlPoints[i * N + j];
+            if(j < N-1)
+                intermediate_tangent_y[i] = u_ControlPoints[i * N + j + 1] - u_ControlPoints[i * N + j];
+        }
+
+        for(int k = 1; k < N; ++k) {
+            for(int i = 0; i < N-k; ++i) {
+                intermediate_point[i] = (1 - v_TexCoord.x) * intermediate_point[i] + v_TexCoord.x * intermediate_point[i+1];
+                intermediate_tangent_y[i] = (1 - v_TexCoord.x) * intermediate_tangent_y[i] + v_TexCoord.x * intermediate_tangent_y[i+1];
+                if(i < N-1-k)
+                    intermediate_tangent_x[i] = (1 - v_TexCoord.x) * intermediate_tangent_x[i] + v_TexCoord.x * intermediate_tangent_x[i+1];
             }
         }
 
-        new_points[j] = control_points[0];
+        point[j] = intermediate_point[0];
+        tangent_x[j] = intermediate_tangent_x[0];
+        if(j < N-1)
+            tangent_y[j] = intermediate_tangent_y[0];
     }
 
-    for(int k = 1; k < 4; ++k) {
-        for(int i = 0; i < 4-k; ++i) {
-            new_points[i] = (1 - v_TexCoord.y) * new_points[i] + v_TexCoord.y * new_points[i + 1];
+    for(int k = 1; k < N; ++k) {
+        for(int i = 0; i < N-k; ++i) {
+            point[i] = (1 - v_TexCoord.y) * point[i] + v_TexCoord.y * point[i + 1];
+            tangent_x[i] = (1 - v_TexCoord.y) * tangent_x[i] + v_TexCoord.y * tangent_x[i + 1];
+            if(i < N-1-k)
+                tangent_y[i] = (1 - v_TexCoord.y) * tangent_y[i] + v_TexCoord.y * tangent_y[i + 1];
         }
     }
 
     // ----------------------------------------------------------------------
-    // retrieve control point position coordinates
-    vec4 p00 = gl_in[0].gl_Position;
-    vec4 p01 = gl_in[1].gl_Position;
-    vec4 p10 = gl_in[2].gl_Position;
-    vec4 p11 = gl_in[3].gl_Position;
-
-    // bilinearly interpolate position coordinate across patch
-    vec4 p0 = (p01 - p00) * u + p00;
-    vec4 p1 = (p11 - p10) * u + p10;
-    vec4 p = (p1 - p0) * v + p0;
-
-    // ----------------------------------------------------------------------
     // output patch point position in clip space
-    gl_Position = u_VP * u_M * vec4(new_points[0], 1);
+    if(u_Geometry)
+        gl_Position = vec4(point[0], 1);
+    else
+        gl_Position = u_VP * u_M * vec4(point[0], 1);
+
+    v_Normal = -normalize(cross(tangent_x[0], tangent_y[0]));
 }

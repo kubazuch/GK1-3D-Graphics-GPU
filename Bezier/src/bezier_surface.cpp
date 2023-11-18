@@ -26,10 +26,17 @@ bezier_surface::bezier_surface(int N, int M)
 	bezier_surface_shader_->bind();
 	bezier_surface_shader_->set_int("u_HDensity", horizontal_density);
 	bezier_surface_shader_->set_int("u_VDensity", vertical_density);
+	bezier_surface_shader_->set_bool("u_Geometry", false);
 
-	bezier_control_shader_ = kEn::shader::create("control_surface", { false, true });
-	bezier_control_shader_->bind();
-	bezier_control_shader_->set_float4("u_Color", vertex::vertex_color);
+	bezier_normal_shader_ = kEn::shader::create("surface", { true, true });
+	bezier_normal_shader_->bind();
+	bezier_normal_shader_->set_int("u_HDensity", horizontal_density);
+	bezier_normal_shader_->set_int("u_VDensity", vertical_density);
+	bezier_normal_shader_->set_bool("u_Geometry", true);
+
+	control_surface_shader_ = kEn::shader::create("control_surface", { false, true });
+	control_surface_shader_->bind();
+	control_surface_shader_->set_float4("u_Color", vertex::vertex_color);
 
 	control_point_shader_ = kEn::shader::create("control_point");
 	control_point_shader_->bind();
@@ -52,8 +59,11 @@ bezier_surface::bezier_surface(int N, int M)
 			bezier_surface_shader_->bind();
 			bezier_surface_shader_->set_float3("u_ControlPoints[" + std::to_string(i * M_ + j) + "]", v->transform_.pos());
 
-			bezier_control_shader_->bind();
-			bezier_control_shader_->set_float3("u_ControlPoints[" + std::to_string(i * M_ + j) + "]", v->transform_.pos());
+			control_surface_shader_->bind();
+			control_surface_shader_->set_float3("u_ControlPoints[" + std::to_string(i * M_ + j) + "]", v->transform_.pos());
+
+			bezier_normal_shader_->bind();
+			bezier_normal_shader_->set_float3("u_ControlPoints[" + std::to_string(i * M_ + j) + "]", v->transform_.pos());
 
 			row.push_back(v);
 		}
@@ -81,19 +91,26 @@ void bezier_surface::render() const
 {
 	bezier_surface_texture_->bind();
 
+	// Draw bezier surface
 	if (draw_wireframe)
 		kEn::render_command::set_wireframe(true);
 	kEn::renderer::submit_tessellated(*bezier_surface_shader_, *vertex_array_, 4 * N_ * M_, transform_);
 	if (draw_wireframe)
 		kEn::render_command::set_wireframe(false);
 
+	// Draw bezier surface normals
+	if(draw_normals)
+		kEn::renderer::submit_tessellated(*bezier_normal_shader_, *vertex_array_, 4 * N_ * M_, transform_);
+
+	// Draw control mesh
 	if(draw_control_frame)
 	{
 		kEn::render_command::set_wireframe(true);
-		kEn::renderer::submit_tessellated(*bezier_control_shader_, *vertex_array_, 4 * N_ * M_, transform_);
+		kEn::renderer::submit_tessellated(*control_surface_shader_, *vertex_array_, 4 * N_ * M_, transform_);
 		kEn::render_command::set_wireframe(false);
 	}
 
+	// Draw control points
 	kEn::render_command::clear_depth();
 	control_point_texture_->bind();
 	for (int i = 0; i < N_; ++i)
@@ -104,6 +121,7 @@ void bezier_surface::render() const
 		}
 	}
 
+	// Draw control points for mouse picking
 	framebuffer_->bind();
 	framebuffer_->clear_attachment(0, 0);
 	framebuffer_->clear_attachment(1, -1);
@@ -127,15 +145,18 @@ void bezier_surface::vertex_moved(bool update) const
 
 	bezier_surface_shader_->bind();
 	bezier_surface_shader_->set_float3("u_ControlPoints[" + std::to_string(selected_point_->x * M_ + selected_point_->y) + "]", selected_point_->transform_.pos());
-	bezier_control_shader_->bind();
-	bezier_control_shader_->set_float3("u_ControlPoints[" + std::to_string(selected_point_->x * M_ + selected_point_->y) + "]", selected_point_->transform_.pos());
+	control_surface_shader_->bind();
+	control_surface_shader_->set_float3("u_ControlPoints[" + std::to_string(selected_point_->x * M_ + selected_point_->y) + "]", selected_point_->transform_.pos());
+	bezier_normal_shader_->bind();
+	bezier_normal_shader_->set_float3("u_ControlPoints[" + std::to_string(selected_point_->x * M_ + selected_point_->y) + "]", selected_point_->transform_.pos());
 }
 
 void bezier_surface::imgui(const kEn::camera& camera)
 {
 	ImGui::Begin("Bezier Surface");
-	ImGui::Checkbox("Control frame", &draw_control_frame);
 	ImGui::Checkbox("Wireframe", &draw_wireframe);
+	ImGui::Checkbox("Control grid", &draw_control_frame);
+	ImGui::Checkbox("Normal vectors", &draw_normals);
 
 	if (selected_point_ && ImGuizmo::Manipulate(glm::value_ptr(camera.view_matrix()), glm::value_ptr(camera.projection_matrix()), ImGuizmo::TRANSLATE, ImGuizmo::LOCAL, glm::value_ptr(selected_point_->transform_.local_to_world_matrix()), NULL, NULL, NULL, NULL))
 	{
@@ -160,12 +181,20 @@ void bezier_surface::imgui(const kEn::camera& camera)
 
 	if (ImGui::CollapsingHeader("Tessellation"))
 	{
-		bezier_surface_shader_->bind();
-
 		if (ImGui::SliderInt("Horizontal density", &horizontal_density, 1, 100))
+		{
+			bezier_surface_shader_->bind();
 			bezier_surface_shader_->set_int("u_HDensity", horizontal_density);
+			bezier_normal_shader_->bind();
+			bezier_normal_shader_->set_int("u_HDensity", horizontal_density);
+		}
 		if (ImGui::SliderInt("Vertical density", &vertical_density, 1, 100))
+		{
+			bezier_surface_shader_->bind();
 			bezier_surface_shader_->set_int("u_VDensity", vertical_density);
+			bezier_normal_shader_->bind();
+			bezier_normal_shader_->set_int("u_VDensity", vertical_density);
+		}
 	}
 
 	ImGui::End();

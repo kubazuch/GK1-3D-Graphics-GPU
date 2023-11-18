@@ -25,7 +25,7 @@ public:
 
 	bool on_window_resize(kEn::window_resize_event& event);
 
-	bool draw_wireframe = false, draw_control_frame = true;
+	bool draw_wireframe = false, draw_control_frame = true, draw_normals = false;
 private:
 	int N_, M_;
 	int horizontal_density = 3, vertical_density = 3;
@@ -35,7 +35,7 @@ private:
 	kEn::transform transform_;
 	std::shared_ptr<kEn::framebuffer> framebuffer_;
 
-	std::unique_ptr<kEn::shader> bezier_surface_shader_, control_point_shader_, bezier_control_shader_;
+	std::unique_ptr<kEn::shader> bezier_surface_shader_, control_point_shader_, control_surface_shader_, bezier_normal_shader_;
 	std::shared_ptr<kEn::texture> bezier_surface_texture_, control_point_texture_;
 	kEn::obj_model control_point_model_;
 
