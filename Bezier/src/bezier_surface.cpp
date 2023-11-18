@@ -9,14 +9,28 @@
 #include "kEn/renderer/shader.h"
 
 kEn::buffer_layout bezier_surface::bezier_layout = {
-	{kEn::shader_data_types::float3, "a_Position"},
+	{kEn::shader_data_types::int_, "a_Index"},
 	{kEn::shader_data_types::float2, "a_TexCoord"}
 };
 
 bezier_surface::bezier_surface(int N, int M)
 	: N_(N), M_(M), selected_point_(nullptr), control_point_model_("sphere.obj")
 {
-	bezier_surface_shader_ = kEn::shader::create("test");
+	kEn::framebuffer_spec spec;
+	spec.width = 1280;
+	spec.height = 720;
+	spec.attachments = { kEn::framebuffer_texture_format::RGBA8, kEn::framebuffer_texture_format::RED_INT };
+	framebuffer_ = kEn::framebuffer::create(spec);
+
+	bezier_surface_shader_ = kEn::shader::create("surface", { false, true });
+	bezier_surface_shader_->bind();
+	bezier_surface_shader_->set_int("u_HDensity", horizontal_density);
+	bezier_surface_shader_->set_int("u_VDensity", vertical_density);
+
+	bezier_control_shader_ = kEn::shader::create("control_surface", { false, true });
+	bezier_control_shader_->bind();
+	bezier_control_shader_->set_float4("u_Color", vertex::vertex_color);
+
 	control_point_shader_ = kEn::shader::create("control_point");
 	control_point_shader_->bind();
 	control_point_shader_->set_float4("u_Color", vertex::vertex_color);
@@ -27,13 +41,19 @@ bezier_surface::bezier_surface(int N, int M)
 	for (int i = 0; i < N_; ++i)
 	{
 		std::vector<vertex*> row;
-		for(int j = 0; j < M_; ++j)
+		for (int j = 0; j < M_; ++j)
 		{
 			auto v = new vertex(i, j);
 
 			v->transform_.set_pos({ glm::mix(-0.5, 0.5, (float)i / 3.0f), .0f, glm::mix(-0.5, 0.5, (float)j / 3.0f) });
 			v->transform_.set_parent(&transform_);
 			v->transform_.set_scale(glm::vec3(0.015f));
+
+			bezier_surface_shader_->bind();
+			bezier_surface_shader_->set_float3("u_ControlPoints[" + std::to_string(i * M_ + j) + "]", v->transform_.pos());
+
+			bezier_control_shader_->bind();
+			bezier_control_shader_->set_float3("u_ControlPoints[" + std::to_string(i * M_ + j) + "]", v->transform_.pos());
 
 			row.push_back(v);
 		}
@@ -43,20 +63,14 @@ bezier_surface::bezier_surface(int N, int M)
 
 	selected_point_ = nullptr;
 
-	kEn::framebuffer_spec spec;
-	spec.width = 1280;
-	spec.height = 720;
-	spec.attachments = { kEn::framebuffer_texture_format::RGBA8, kEn::framebuffer_texture_format::RED_INT };
-	framebuffer_ = kEn::framebuffer::create(spec);
-
 	generate_vertex_buffer();
 }
 
 bezier_surface::~bezier_surface()
 {
-	for(int i = 0; i < N_; ++i)
+	for (int i = 0; i < N_; ++i)
 	{
-		for(int j = 0; j < M_; ++j)
+		for (int j = 0; j < M_; ++j)
 		{
 			delete control_points_[i][j];
 		}
@@ -69,14 +83,22 @@ void bezier_surface::render() const
 
 	if (draw_wireframe)
 		kEn::render_command::set_wireframe(true);
-	kEn::renderer::submit(*bezier_surface_shader_, *vertex_array_, transform_);
+	kEn::renderer::submit_tessellated(*bezier_surface_shader_, *vertex_array_, 4 * N_ * M_, transform_);
 	if (draw_wireframe)
 		kEn::render_command::set_wireframe(false);
 
-	control_point_texture_->bind();
-	for(int i = 0; i < N_; ++i)
+	if(draw_control_frame)
 	{
-		for(int j = 0; j < M_; ++j)
+		kEn::render_command::set_wireframe(true);
+		kEn::renderer::submit_tessellated(*bezier_control_shader_, *vertex_array_, 4 * N_ * M_, transform_);
+		kEn::render_command::set_wireframe(false);
+	}
+
+	kEn::render_command::clear_depth();
+	control_point_texture_->bind();
+	for (int i = 0; i < N_; ++i)
+	{
+		for (int j = 0; j < M_; ++j)
 		{
 			kEn::renderer::submit(*control_point_shader_, *control_point_model_.vertex_array_, control_points_[i][j]->transform_);
 		}
@@ -96,34 +118,55 @@ void bezier_surface::render() const
 	framebuffer_->unbind();
 }
 
-void bezier_surface::vertex_moved() const
+void bezier_surface::vertex_moved(bool update) const
 {
-	selected_point_->transform_.model_matrix_updated();
-	vertex_buffer_->modify_data([this](void* buffer) {
-		auto vertices = static_cast<float*>(buffer);
-		int offset = 5*(selected_point_->x * M_ + selected_point_->y);
-		vertices[offset + 0] = selected_point_->transform_.local_to_parent_matrix()[3][0];
-		vertices[offset + 1] = selected_point_->transform_.local_to_parent_matrix()[3][1];
-		vertices[offset + 2] = selected_point_->transform_.local_to_parent_matrix()[3][2];
-	});
+	if (update)
+		selected_point_->transform_.model_matrix_updated();
+	else
+		selected_point_->transform_.set_pos(selected_point_->transform_.pos());
+
+	bezier_surface_shader_->bind();
+	bezier_surface_shader_->set_float3("u_ControlPoints[" + std::to_string(selected_point_->x * M_ + selected_point_->y) + "]", selected_point_->transform_.pos());
+	bezier_control_shader_->bind();
+	bezier_control_shader_->set_float3("u_ControlPoints[" + std::to_string(selected_point_->x * M_ + selected_point_->y) + "]", selected_point_->transform_.pos());
 }
 
 void bezier_surface::imgui(const kEn::camera& camera)
 {
-	ImGui::Begin("Surface");
-	if (selected_point_)
-	{
-		if (ImGuizmo::Manipulate(glm::value_ptr(camera.view_matrix()), glm::value_ptr(camera.projection_matrix()), ImGuizmo::TRANSLATE, ImGuizmo::LOCAL, glm::value_ptr(selected_point_->transform_.local_to_world_matrix()), NULL, NULL, NULL, NULL))
-		{
-			vertex_moved();
-		}
+	ImGui::Begin("Bezier Surface");
+	ImGui::Checkbox("Control frame", &draw_control_frame);
+	ImGui::Checkbox("Wireframe", &draw_wireframe);
 
-		ImGui::InputFloat3("Tr", glm::value_ptr(selected_point_->transform_.pos()));
+	if (selected_point_ && ImGuizmo::Manipulate(glm::value_ptr(camera.view_matrix()), glm::value_ptr(camera.projection_matrix()), ImGuizmo::TRANSLATE, ImGuizmo::LOCAL, glm::value_ptr(selected_point_->transform_.local_to_world_matrix()), NULL, NULL, NULL, NULL))
+	{
+		vertex_moved(true);
 	}
 
-	ImGui::Checkbox("Wireframe", &draw_wireframe);
-	auto texture_id = framebuffer_->get_color_attachment_renderer_id();
-	ImGui::Image((void*)texture_id, ImVec2{ 320.f, 180.f }, ImVec2{ 0,1 }, ImVec2{ 1,0 });
+	if(ImGui::CollapsingHeader("Selection"))
+	{
+		if (selected_point_)
+		{
+			if(ImGui::InputFloat3("Pos", glm::value_ptr(selected_point_->transform_.pos())))
+			{
+				vertex_moved(false);
+			}
+		}
+		else
+		{
+			ImGui::Text("Nothing");
+		}
+	}
+
+
+	if (ImGui::CollapsingHeader("Tessellation"))
+	{
+		bezier_surface_shader_->bind();
+
+		if (ImGui::SliderInt("Horizontal density", &horizontal_density, 1, 100))
+			bezier_surface_shader_->set_int("u_HDensity", horizontal_density);
+		if (ImGui::SliderInt("Vertical density", &vertical_density, 1, 100))
+			bezier_surface_shader_->set_int("u_VDensity", vertical_density);
+	}
 
 	ImGui::End();
 }
@@ -133,57 +176,53 @@ bool bezier_surface::on_mouse_click(kEn::mouse_button_pressed_event& event)
 	framebuffer_->bind();
 	int pixelData = framebuffer_->read_pixel(1, kEn::input::get_mouse_x(), framebuffer_->get_spec().height - kEn::input::get_mouse_y());
 	framebuffer_->unbind();
-	if (pixelData == -1) //TODO: unselect, but first handle imgui events
+	if (pixelData < 0) {
+		selected_point_ = nullptr;
 		return false;
+	}
 
 	selected_point_ = control_points_[pixelData / M_][pixelData % M_];
 	return false;
 }
 
+bool bezier_surface::on_window_resize(kEn::window_resize_event& event)
+{
+	framebuffer_->resize(event.width(), event.height());
+	return false;
+}
+
 void bezier_surface::generate_vertex_buffer()
 {
-	const int stride = bezier_layout.stride() / sizeof(float);
-
-	const auto vertices = new float[stride * N_ * M_];
-	const auto indices = new uint32_t[(N_ - 1) * (M_ - 1) * 6];
-
-	int k = 0;
-	for (int i = 0; i < N_; ++i)
+	struct vertex
 	{
-		for (int j = 0; j < M_; ++j)
+		int pos;
+		float tx;
+		float ty;
+	};
+
+	std::vector<vertex> data;
+
+	for (int i = 0; i < N_ - 1; ++i)
+	{
+		for (int j = 0; j < M_ - 1; ++j)
 		{
-			const int index = i * N_ + j;
-			const glm::vec3 pos = control_points_[i][j]->transform_.pos();
+			glm::vec3 pos = control_points_[i][j]->transform_.pos();
+			data.push_back({ i * M_ + j, 0.5f + pos.x , 0.5f + pos.z });
 
-			const int offset = stride * index;
-			vertices[offset + 0] = pos.x;   // x
-			vertices[offset + 1] = pos.y;   // y
-			vertices[offset + 2] = pos.z;   // z
-			vertices[offset + 3] = 0.5f - pos.x;   // u
-			vertices[offset + 4] = 0.5f - pos.z;   // v
+			pos = control_points_[i + 1][j]->transform_.pos();
+			data.push_back({ (i + 1) * M_ + j, 0.5f + pos.x , 0.5f + pos.z });
 
-			if (i == M_ - 1 || j == N_ - 1)
-				continue;
+			pos = control_points_[i][j + 1]->transform_.pos();
+			data.push_back({ i * M_ + j + 1 , 0.5f + pos.x , 0.5f + pos.z });
 
-			indices[k + 0] = index;
-			indices[k + 1] = index + 1;
-			indices[k + 2] = index + M_;
-			indices[k + 3] = index + 1;
-			indices[k + 4] = index + 1 + M_;
-			indices[k + 5] = index + M_;
-			k += 6;
+			pos = control_points_[i + 1][j + 1]->transform_.pos();
+			data.push_back({ (i + 1) * M_ + j + 1, 0.5f + pos.x , 0.5f + pos.z });
 		}
 	}
 
 	vertex_array_ = kEn::vertex_array::create();
-	vertex_buffer_ = kEn::mutable_vertex_buffer::create(vertices, bezier_layout.stride() * N_ * M_);
+	auto vertex_buffer_ = kEn::vertex_buffer::create(reinterpret_cast<float*>(data.data()), data.size() * sizeof(vertex));
 	vertex_buffer_->set_layout(bezier_layout);
 
-	auto index_buffer = kEn::index_buffer::create(indices, (N_ - 1) * (M_ - 1) * 6);
-
 	vertex_array_->add_vertex_buffer(vertex_buffer_);
-	vertex_array_->set_index_buffer(index_buffer);
-
-	delete[] vertices;
-	delete[] indices;
 }
