@@ -8,6 +8,8 @@ uniform mat4 u_M;
 uniform mat4 u_VP;
 
 in vec3 v_Normal[];
+in vec3 v_Tangent[];
+in vec3 v_Bitangent[];
 
 out vec4 vertex_color;
 

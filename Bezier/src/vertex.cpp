@@ -1,3 +1,3 @@
 #include "vertex.h"
 
-glm::vec4 vertex::vertex_color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+glm::vec3 vertex::vertex_color = glm::vec3(1.0f, 1.0f, 1.0f);

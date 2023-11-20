@@ -21,5 +21,5 @@ struct vertex
 	int x, y;
 
 public:
-	static glm::vec4 vertex_color;
+	static glm::vec3 vertex_color;
 };

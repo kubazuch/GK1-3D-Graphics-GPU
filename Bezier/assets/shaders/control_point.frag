@@ -5,13 +5,11 @@ layout(location = 1) out int color2;
 				
 in vec2 v_TexCoord;
 
-uniform sampler2D u_Texture;
-
-uniform vec4 u_Color;
+uniform vec3 u_Color;
 uniform int u_Id;
 
 void main()
 {
-	color = u_Color; //texture(u_Texture, v_TexCoord);
+	color = vec4(u_Color, 1.0);
 	color2 = u_Id;
 }

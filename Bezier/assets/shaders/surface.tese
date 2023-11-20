@@ -11,8 +11,10 @@ uniform bool u_Geometry;
 in vec2 TextureCoord[];
 
 // send to Fragment Shader for coloring
+out vec3 v_Pos;
 out vec2 v_TexCoord;
 out vec3 v_Normal;
+out mat3 v_TBN;
 
 const int N = 4;
 uniform vec3 u_ControlPoints[N * N];
@@ -74,10 +76,10 @@ void main()
 
     for(int k = 1; k < N; ++k) {
         for(int i = 0; i < N-k; ++i) {
-            point[i] = (1 - v_TexCoord.y) * point[i] + v_TexCoord.y * point[i + 1];
-            tangent_x[i] = (1 - v_TexCoord.y) * tangent_x[i] + v_TexCoord.y * tangent_x[i + 1];
+            point[i] = (1 - v_TexCoord.y) * point[i+1] + v_TexCoord.y * point[i];
+            tangent_x[i] = (1 - v_TexCoord.y) * tangent_x[i+1] + v_TexCoord.y * tangent_x[i];
             if(i < N-1-k)
-                tangent_y[i] = (1 - v_TexCoord.y) * tangent_y[i] + v_TexCoord.y * tangent_y[i + 1];
+                tangent_y[i] = (1 - v_TexCoord.y) * tangent_y[i+1] + v_TexCoord.y * tangent_y[i];
         }
     }
 
@@ -85,8 +87,12 @@ void main()
     // output patch point position in clip space
     if(u_Geometry)
         gl_Position = vec4(point[0], 1);
-    else
+    else {
         gl_Position = u_VP * u_M * vec4(point[0], 1);
-
-    v_Normal = -normalize(cross(tangent_x[0], tangent_y[0]));
+        v_Pos = (u_M * vec4(point[0], 1)).xyz; 
+    }
+    vec3 tangent = normalize(vec3(u_M * vec4(tangent_x[0], 0.0)));
+    vec3 bitangent = -normalize(vec3(u_M * vec4(tangent_y[0], 0.0)));
+    v_Normal = normalize(cross(tangent, bitangent));
+    v_TBN = mat3(tangent, bitangent, v_Normal);
 }
