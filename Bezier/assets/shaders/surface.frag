@@ -1,5 +1,8 @@
 #version 410 core
 
+#include "material"
+#include "light"
+
 in vec3 v_Pos;
 in vec2 v_TexCoord;
 in vec3 v_Normal;
@@ -9,28 +12,14 @@ in vec4 vertex_color;
 
 uniform sampler2D u_Texture;
 uniform sampler2D u_NormalTexture;
-uniform bool u_UseTexture;
-uniform bool u_Geometry;
+uniform bool u_UseTexture = false;
+uniform bool u_Geometry = false;
 uniform int u_NormalMode;
 
 layout(location = 0) out vec4 color;
 
-struct material {
-	float ka;
-	float kd;
-	float ks;
-	float m;
-
-	vec3 color;
-};
-
-struct light {
-	vec3 pos;
-	vec3 color;
-};
-
 uniform material u_Material;
-uniform light u_Light;
+uniform point_light u_Light;
 uniform vec3 u_Ambient;
 uniform vec3 u_CameraPos;
 
@@ -59,17 +48,6 @@ void main()
 		normal = normalize(normal + v_Normal);
 	}
 
-	vec3 ambient = u_Material.ka * u_Ambient;
-
-	vec3 light_dir = normalize(u_Light.pos - v_Pos);
-	float diff = max(dot(normal, light_dir), 0.0);
-	vec3 diffuse = u_Material.kd * diff * u_Light.color;
-
-	vec3 view_dir = normalize(u_CameraPos - v_Pos);
-	vec3 reflect_dir = reflect(-light_dir, normal);
-	float spec = pow(max(dot(view_dir, reflect_dir), 0.0), u_Material.m);
-	vec3 specular = u_Material.ks * spec * u_Light.color;  
-	
-	vec3 result = (ambient + diffuse + specular) * object_color;
+	vec3 result = calc_point_light(u_Light, u_Material, u_Ambient, normal, v_Pos, normalize(u_CameraPos - v_Pos)) * object_color;
 	color = vec4(result, 1.0);
 }
