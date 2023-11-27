@@ -316,6 +316,13 @@ void bezier_surface::imgui(const kEn::camera& camera)
 						material_.set_normal_texture(kEn::texture2D::create(path));
 					}
 				}
+
+				static bool invert_normal_y = false;
+				if(ImGui::Checkbox("Invert Y", &invert_normal_y))
+				{
+					bezier_surface_shader_->bind();
+					bezier_surface_shader_->set_bool("u_InvertNormalY", invert_normal_y);
+				}
 			}
 
 			ImGui::TreePop();

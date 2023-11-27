@@ -4,6 +4,7 @@
 #include <imgui/imgui.h>
 
 #include "bezier_surface.h"
+#include "sphere.h"
 #include "vertex.h"
 #include "glm/gtc/type_ptr.hpp"
 #include "imgui/imgui_internal.h"
@@ -55,6 +56,7 @@ public:
 		dispatcher_->subscribe<kEn::mouse_button_pressed_event>(KEN_EVENT_SUBSCRIBER(on_mouse_click));
 
 		surface_.set_ambient(ambient_color_);
+		sphere_.set_ambient(ambient_color_);
 	}
 
 	void on_update(double delta, double) override
@@ -185,6 +187,7 @@ public:
 
 		kEn::renderer::begin_scene(camera_);
 		{
+			sphere_.render(*camera_, light_);
 			surface_.render(*camera_, light_);
 
 			// Draw control points for mouse picking
@@ -230,6 +233,16 @@ public:
 
 			surface_.imgui(*camera_);
 
+			ImGui::End();
+
+
+			ImGui::Begin("Sphere Surface");
+
+			sphere_.imgui(*camera_);
+
+			ImGui::End();
+
+			ImGui::Begin("Common");
 			if (ImGui::CollapsingHeader("Light"))
 			{
 				if (ImGui::ColorEdit3("Color##2", glm::value_ptr(light_.color.get())))
@@ -249,9 +262,9 @@ public:
 				if (ImGui::ColorEdit3("Ambient", glm::value_ptr(ambient_color_)))
 				{
 					surface_.set_ambient(ambient_color_);
+					sphere_.set_ambient(ambient_color_);
 				}
 			}
-
 			ImGui::End();
 		}
 	}
@@ -315,6 +328,7 @@ private:
 	float time_ = 0;
 
 	bezier_surface surface_;
+	sphere sphere_;
 	camera_mode mode_;
 	kEn::transform camera_mount_;
 	std::shared_ptr<kEn::camera> camera_;
