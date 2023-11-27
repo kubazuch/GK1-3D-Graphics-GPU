@@ -23,6 +23,8 @@ bezier_surface::bezier_surface(int N, int M)
 	bezier_surface_shader_->bind();
 	bezier_surface_shader_->set_int("u_Texture", 0);
 	bezier_surface_shader_->set_int("u_NormalTexture", 1);
+	bezier_surface_shader_->set_int("u_AOTexture", 2);
+	bezier_surface_shader_->set_int("u_HeightTexture", 3);
 	bezier_surface_shader_->set_int("u_HDensity", horizontal_density);
 	bezier_surface_shader_->set_int("u_VDensity", vertical_density);
 	bezier_surface_shader_->set_material("u_Material", material_);
@@ -270,7 +272,7 @@ void bezier_surface::imgui(const kEn::camera& camera)
 			{
 				if(const auto texture = material_.texture())
 					ImGui::Image((ImTextureID)texture->renderer_id(), ImVec2{ 250 * (float)texture->width() / (float)texture->height(), 250.f }, ImVec2{ 0.0f, 1.0f }, ImVec2{ 1.0f, 0.0f });
-				if (ImGui::Button("Click!"))
+				if (ImGui::Button("Select"))
 				{
 					if (const std::filesystem::path path = kEn::file_dialog::open_image_file(); !path.empty())
 					{
@@ -307,13 +309,82 @@ void bezier_surface::imgui(const kEn::camera& camera)
 			{
 				if(const auto normal_texture = material_.normal_texture())
 					ImGui::Image((ImTextureID)normal_texture->renderer_id(), ImVec2{ 250 * (float)normal_texture->width() / (float)normal_texture->height(), 250.f }, ImVec2{ 0.0f, 1.0f }, ImVec2{ 1.0f, 0.0f });
-				if (ImGui::Button("Click!"))
+				if (ImGui::Button("Select"))
 				{
 					if (const std::filesystem::path path = kEn::file_dialog::open_image_file(); !path.empty())
 					{
 						material_.set_normal_texture(kEn::texture2D::create(path));
 					}
 				}
+			}
+
+			ImGui::TreePop();
+		}
+
+		if (ImGui::TreeNode("AO"))
+		{
+			static int texture_type = 0;
+			if (ImGui::RadioButton("None", &texture_type, 0))
+			{
+				bezier_surface_shader_->bind();
+				bezier_surface_shader_->set_bool("u_UseAO", false);
+			}
+			ImGui::SameLine();
+			if (ImGui::RadioButton("Image", &texture_type, 1))
+			{
+				bezier_surface_shader_->bind();
+				bezier_surface_shader_->set_bool("u_UseAO", true);
+			}
+
+			if (texture_type == 1)
+			{
+				if (const auto texture = material_.ao_texture())
+					ImGui::Image((ImTextureID)texture->renderer_id(), ImVec2{ 250 * (float)texture->width() / (float)texture->height(), 250.f }, ImVec2{ 0.0f, 1.0f }, ImVec2{ 1.0f, 0.0f });
+				if (ImGui::Button("Select"))
+				{
+					if (const std::filesystem::path path = kEn::file_dialog::open_image_file(); !path.empty())
+					{
+						material_.set_ao_texture(kEn::texture2D::create(path));
+					}
+				}
+			}
+
+			ImGui::TreePop();
+		}
+
+		if (ImGui::TreeNode("Height"))
+		{
+			static int texture_type = 0;
+			if (ImGui::RadioButton("None", &texture_type, 0))
+			{
+				bezier_surface_shader_->bind();
+				bezier_surface_shader_->set_bool("u_UseHeight", false);
+			}
+			ImGui::SameLine();
+			if (ImGui::RadioButton("Image", &texture_type, 1))
+			{
+				bezier_surface_shader_->bind();
+				bezier_surface_shader_->set_bool("u_UseHeight", true);
+			}
+
+			if (texture_type == 1)
+			{
+				if (const auto texture = material_.height_texture())
+					ImGui::Image((ImTextureID)texture->renderer_id(), ImVec2{ 250 * (float)texture->width() / (float)texture->height(), 250.f }, ImVec2{ 0.0f, 1.0f }, ImVec2{ 1.0f, 0.0f });
+				if (ImGui::Button("Select"))
+				{
+					if (const std::filesystem::path path = kEn::file_dialog::open_image_file(); !path.empty())
+					{
+						material_.set_height_texture(kEn::texture2D::create(path));
+					}
+				}
+			}
+
+			static float height_mod = 1.0f / 50.f;
+			if(ImGui::SliderFloat("Multiplier", &height_mod, 0, 1))
+			{
+				bezier_surface_shader_->bind();
+				bezier_surface_shader_->set_float("u_HeightMod", height_mod);
 			}
 
 			ImGui::TreePop();

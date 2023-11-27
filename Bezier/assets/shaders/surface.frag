@@ -12,7 +12,9 @@ in vec4 vertex_color;
 
 uniform sampler2D u_Texture;
 uniform sampler2D u_NormalTexture;
+uniform sampler2D u_AOTexture;
 uniform bool u_UseTexture = false;
+uniform bool u_UseAO = false;
 uniform bool u_Geometry = false;
 uniform int u_NormalMode;
 
@@ -47,8 +49,10 @@ void main()
 	if(u_NormalMode == 2) {
 		normal = normalize(normal + v_Normal);
 	}
-	
+
 	vec3 result = u_Material.ka * u_Ambient;
+	if(u_UseAO)
+		result *= texture(u_AOTexture, v_TexCoord).r;
 	result += calc_point_light(u_Light, u_Material, normal, v_Pos, normalize(u_CameraPos - v_Pos));
 	color = vec4(result * object_color, 1.0);
 }

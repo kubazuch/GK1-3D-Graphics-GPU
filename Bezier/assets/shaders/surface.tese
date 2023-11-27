@@ -18,6 +18,9 @@ out mat3 v_TBN;
 
 const int N = 4;
 uniform vec3 u_ControlPoints[N * N];
+uniform bool u_UseHeight = false;
+uniform sampler2D u_HeightTexture;
+uniform float u_HeightMod = 1.0/50.0;
 
 void main()
 {
@@ -85,14 +88,20 @@ void main()
 
     // ----------------------------------------------------------------------
     // output patch point position in clip space
-    if(u_Geometry)
-        gl_Position = vec4(point[0], 1);
-    else {
-        gl_Position = u_VP * u_M * vec4(point[0], 1);
-        v_Pos = (u_M * vec4(point[0], 1)).xyz; 
-    }
     vec3 tangent = normalize(vec3(u_M * vec4(tangent_x[0], 0.0)));
     vec3 bitangent = -normalize(vec3(u_M * vec4(tangent_y[0], 0.0)));
     v_Normal = normalize(cross(tangent, bitangent));
+
+    if(u_Geometry)
+        gl_Position = vec4(point[0], 1);
+    else {
+	    if(u_UseHeight){
+            float height = texture(u_HeightTexture, v_TexCoord).r * u_HeightMod;
+            point[0] += v_Normal * height;
+        }
+        gl_Position = u_VP * u_M * vec4(point[0], 1);
+        v_Pos = (u_M * vec4(point[0], 1)).xyz; 
+    }
+
     v_TBN = mat3(tangent, bitangent, v_Normal);
 }
