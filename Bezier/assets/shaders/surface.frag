@@ -47,7 +47,8 @@ void main()
 	if(u_NormalMode == 2) {
 		normal = normalize(normal + v_Normal);
 	}
-
-	vec3 result = calc_point_light(u_Light, u_Material, u_Ambient, normal, v_Pos, normalize(u_CameraPos - v_Pos)) * object_color;
-	color = vec4(result, 1.0);
+	
+	vec3 result = u_Material.ka * u_Ambient;
+	result += calc_point_light(u_Light, u_Material, normal, v_Pos, normalize(u_CameraPos - v_Pos));
+	color = vec4(result * object_color, 1.0);
 }

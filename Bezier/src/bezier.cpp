@@ -96,19 +96,19 @@ public:
 			glm::vec3 direction{0.f};
 			if (kEn::input::is_key_pressed(kEn::key::up) || kEn::input::is_key_pressed(kEn::key::w))
 			{
-				direction -= camera_->get_transform().front();
+				direction -= camera_->get_transform().local_front();
 			}
 			if (kEn::input::is_key_pressed(kEn::key::down) || kEn::input::is_key_pressed(kEn::key::s))
 			{
-				direction += camera_->get_transform().front();
+				direction += camera_->get_transform().local_front();
 			}
 			if (kEn::input::is_key_pressed(kEn::key::left) || kEn::input::is_key_pressed(kEn::key::a))
 			{
-				direction -= camera_->get_transform().right();
+				direction -= camera_->get_transform().local_right();
 			}
 			if (kEn::input::is_key_pressed(kEn::key::right) || kEn::input::is_key_pressed(kEn::key::d))
 			{
-				direction += camera_->get_transform().right();
+				direction += camera_->get_transform().local_right();
 			}
 			if (kEn::input::is_key_pressed(kEn::key::space) || kEn::input::is_key_pressed(kEn::key::q))
 			{
@@ -139,25 +139,25 @@ public:
 			glm::vec3 direction{0.f};
 			if (kEn::input::is_key_pressed(kEn::key::up) || kEn::input::is_key_pressed(kEn::key::w))
 			{
-				direction -= camera_->get_transform().front();
+				direction -= camera_->get_transform().local_front();
 			}
 			if (kEn::input::is_key_pressed(kEn::key::down) || kEn::input::is_key_pressed(kEn::key::s))
 			{
-				direction += camera_->get_transform().front();
+				direction += camera_->get_transform().local_front();
 			}
 			if (kEn::input::is_key_pressed(kEn::key::space) || kEn::input::is_key_pressed(kEn::key::q))
 			{
-				direction += camera_->get_transform().up();
+				direction += camera_->get_transform().local_up();
 			}
 			if (kEn::input::is_key_pressed(kEn::key::left_shift) || kEn::input::is_key_pressed(kEn::key::e))
 			{
-				direction -= camera_->get_transform().up();
+				direction -= camera_->get_transform().local_up();
 			}
 
 			if (direction.x || direction.y || direction.z)
 			{
 				camera_->fma(glm::normalize(direction), move_amount);
-				camera_->look_at({ 0,0,0 }, { 0,1,0 });
+				camera_->look_at(camera_mount_.pos(), { 0,1,0 });
 			}
 
 			camera_mount_.rotate({ 0,1,0 }, move_amount);
@@ -281,7 +281,7 @@ public:
 			kEn::input::set_mouse_pos(window_center_);
 			kEn::input::set_cursor_visible(false);
 			mode_ = camera_mode::orbit;
-			camera_->look_at({ 0,0,0 }, { 0,1,0 });
+			camera_->look_at(camera_mount_.pos(), { 0,1,0 });
 		}
 
 		return mode_ != camera_mode::none;
