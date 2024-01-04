@@ -20,6 +20,8 @@ uniform bool u_UseHeight = false;
 uniform sampler2D u_HeightTexture;
 uniform float u_HeightMod = 1.0/50.0;
 
+#define M_PI 3.1415926535897932384626433832795
+
 void main()
 {
     // get patch coordinate
@@ -40,11 +42,15 @@ void main()
     
     // ----------------------------------------------------------------------
     // Sphere
-    vec3 pos = 0.1 * vec3(cos(v_TexCoord.x)*cos(v_TexCoord.y), cos(v_TexCoord.x)*sin(v_TexCoord.y), sin(v_TexCoord.x));
+    float r = 0.1;
+    float phi = -(2 * v_TexCoord.x - 1) * M_PI;
+    float theta = (v_TexCoord.y - 0.5) * M_PI;
+
+    vec3 pos = vec3(cos(theta) * cos(phi), sin(theta), cos(theta)*sin(phi));
     
     // ----------------------------------------------------------------------
     // output patch point position in clip space
-    v_Normal = normalize(pos);
+    v_Normal = normalize((u_M * vec4(pos, 0)).xyz);
 
 	if(u_UseHeight){
         float height = texture(u_HeightTexture, v_TexCoord).r * u_HeightMod;

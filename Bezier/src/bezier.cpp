@@ -2,13 +2,12 @@
 #include <kEn/core/assert.h>
 
 #include <imgui/imgui.h>
+#include <ImGuizmo/ImGuizmo.h>
 
 #include "bezier_surface.h"
 #include "sphere.h"
 #include "vertex.h"
 #include "glm/gtc/type_ptr.hpp"
-#include "imgui/imgui_internal.h"
-#include "ImGuizmo/ImGuizmo.h"
 #include "kEn/camera/camera.h"
 #include "kEn/core/transform.h"
 #include "kEn/event/key_events.h"
@@ -61,7 +60,6 @@ public:
 
 	void on_update(double delta, double) override
 	{
-
 		if (kEn::input::is_key_pressed(kEn::key::escape))
 		{
 			kEn::input::set_cursor_visible(true);
@@ -166,6 +164,22 @@ public:
 			camera_->recalculate_view();
 		}
 
+		if (mode_ == camera_mode::none)
+		{
+			if (kEn::input::is_key_pressed(kEn::key::g))
+			{
+				sphere_.operation_ = ImGuizmo::TRANSLATE;
+			}
+			else if (kEn::input::is_key_pressed(kEn::key::r))
+			{
+				sphere_.operation_ = ImGuizmo::ROTATE;
+			}
+			else if (kEn::input::is_key_pressed(kEn::key::s))
+			{
+				sphere_.operation_ = ImGuizmo::SCALE;
+			}
+		}
+
 		const float speed = 0.1f;
 		static float time = 0.0f;
 		if (animate_light)
@@ -237,6 +251,11 @@ public:
 
 
 			ImGui::Begin("Sphere Surface");
+			if(ImGui::Checkbox("Gizmo", &sphere_.selected))
+			{
+				light_selected_ = false;
+				surface_.selected_point_ = nullptr;
+			}
 
 			sphere_.imgui(*camera_);
 
@@ -315,11 +334,13 @@ public:
 		{
 			light_selected_ = true;
 			surface_.selected_point_ = nullptr;
+			sphere_.selected = false;
 			return false;
 		}
 
 		light_selected_ = false;
 		surface_.selected_point_ = surface_.control_points_[pixelData / surface_.M_][pixelData % surface_.M_];
+		sphere_.selected = false;
 		return false;
 	}
 

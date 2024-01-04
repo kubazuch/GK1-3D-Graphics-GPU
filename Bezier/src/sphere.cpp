@@ -1,7 +1,6 @@
 #include "sphere.h"
 
 #include "glm/gtc/type_ptr.hpp"
-#include "imgui/imgui.h"
 #include "kEn/renderer/renderer.h"
 #include "kEn/renderer/render_command.h"
 #include "kEn/renderer/shader.h"
@@ -22,6 +21,9 @@ sphere::sphere()
 	surface_shader_->set_int("u_HDensity", horizontal_density);
 	surface_shader_->set_int("u_VDensity", vertical_density);
 	surface_shader_->set_material("u_Material", material_);
+
+	transform_.set_scale({ 0.1f, 0.1f, 0.1f });
+	transform_.set_pos({ 0.2,0.2,0.2 });
 	
 	generate_vertex_buffer();
 }
@@ -42,8 +44,14 @@ void sphere::render(const kEn::camera& cam, const kEn::point_light& light) const
 		kEn::render_command::set_wireframe(false);
 }
 
-void sphere::imgui(const kEn::camera&)
+void sphere::imgui(const kEn::camera& camera)
 {
+
+	if(selected && ImGuizmo::Manipulate(glm::value_ptr(camera.view_matrix()), glm::value_ptr(camera.projection_matrix()), operation_, ImGuizmo::LOCAL, glm::value_ptr(transform_.local_to_world_matrix()), NULL, NULL, NULL, NULL))
+	{
+		transform_.model_matrix_updated();
+	}
+
 	ImGui::Checkbox("Wireframe", &draw_wireframe);
 
 	if (ImGui::CollapsingHeader("Tessellation"))
@@ -252,19 +260,19 @@ void sphere::generate_vertex_buffer()
 		float ty;
 	};
 
-	vertex points_[5][5];
-	for (int i = 0; i < 5; ++i)
+	vertex points_[6][5];
+	for (int i = 0; i < 6; ++i)
 	{
 		std::vector<vertex> row;
 		for (int j = 0; j < 5; ++j)
 		{
-			points_[i][j] = { (float)i / 4.0f * 2 * glm::pi<float>(), ((float)j / 4.0f - 0.5f) * glm::pi<float>() };
+			points_[i][j] = { (float)i / 5.0f, (float)j / 4.0f };
 		}
 	}
 
 	std::vector<vertex> data;
 
-	for (int i = 0; i < 5 - 1; ++i)
+	for (int i = 0; i < 6 - 1; ++i)
 	{
 		for (int j = 0; j < 5 - 1; ++j)
 		{

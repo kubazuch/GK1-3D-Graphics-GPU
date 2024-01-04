@@ -1,4 +1,8 @@
 #pragma once
+
+#include "imgui/imgui.h"
+#include "ImGuizmo/ImGuizmo.h"
+
 #include "kEn/camera/camera.h"
 #include "kEn/core/transform.h"
 #include "kEn/renderer/light.h"
@@ -24,7 +28,7 @@ public:
 	void set_ambient(const glm::vec3& color) const { surface_shader_->bind(); surface_shader_->set_float3("u_Ambient", color); }
 
 public:
-	bool draw_wireframe = false, draw_normals = false;
+	bool draw_wireframe = false, draw_normals = false, selected = false;
 
 private:
 	int horizontal_density = 3, vertical_density = 3;
@@ -34,6 +38,8 @@ private:
 	kEn::transform transform_;
 
 	std::unique_ptr<kEn::shader> surface_shader_, normal_shader_;
+
+	ImGuizmo::OPERATION operation_ = ImGuizmo::TRANSLATE;
 	friend class main_layer;
 private:
 	static kEn::buffer_layout sphere_layout;
