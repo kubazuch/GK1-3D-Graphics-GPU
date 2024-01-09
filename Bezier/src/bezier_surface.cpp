@@ -128,7 +128,7 @@ void bezier_surface::render(const kEn::camera& cam, const kEn::point_light& ligh
 
 	// Draw control points
 	control_point_shader_->set_float3("u_Color", vertex::vertex_color);
-	kEn::render_command::clear_depth();
+	kEn::render_command::depth_testing(false);
 	for (int i = 0; i < N_; ++i)
 	{
 		for (int j = 0; j < M_; ++j)
@@ -136,6 +136,7 @@ void bezier_surface::render(const kEn::camera& cam, const kEn::point_light& ligh
 			kEn::renderer::submit(*control_point_shader_, *control_point_model_.vertex_array_, control_points_[i][j]->transform_);
 		}
 	}
+	kEn::render_command::depth_testing(true);
 }
 
 void bezier_surface::render_mouse_pick(kEn::shader& shader) const

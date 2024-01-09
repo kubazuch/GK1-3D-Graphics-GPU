@@ -14,6 +14,7 @@
 #include "kEn/event/mouse_events.h"
 #include "kEn/renderer/light.h"
 #include "kEn/renderer/texture.h"
+#include "kEn/renderer/mesh/model.h"
 #include "kEn/renderer/mesh/obj_model.h"
 
 enum class camera_mode
@@ -26,7 +27,7 @@ enum class camera_mode
 class main_layer : public kEn::layer
 {
 public:
-	main_layer() : layer("BezierLayer"), ambient_color_{ 0.0f, 0.01f, 0.22f }, window_center_(640, 360)
+	main_layer() : layer("BezierLayer"), ambient_color_{ 0.0f, 0.01f, 0.22f }, window_center_(640, 360), model_("REDACTED")
 	{
 		dispatcher_ = std::make_unique<kEn::event_dispatcher>();
 
@@ -44,6 +45,8 @@ public:
 		framebuffer_ = kEn::framebuffer::create(spec);
 
 		mouse_pick_shader_ = kEn::shader::create("control_point");
+
+		phong_ = kEn::shader::create("phong");
 
 		light_.transform.set_pos({ 0, 0.5, 0 });
 		light_.transform.set_scale(glm::vec3{0.02f});
@@ -201,6 +204,7 @@ public:
 
 		kEn::renderer::begin_scene(camera_);
 		{
+			model_.render(*phong_);
 			sphere_.render(*camera_, light_);
 			surface_.render(*camera_, light_);
 
@@ -357,6 +361,9 @@ private:
 	std::shared_ptr<kEn::framebuffer> framebuffer_;
 
 	std::unique_ptr<kEn::shader> mouse_pick_shader_;
+
+	kEn::model model_;
+	std::unique_ptr<kEn::shader> phong_;
 
 	glm::vec3 ambient_color_;
 

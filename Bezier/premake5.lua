@@ -20,7 +20,8 @@ project "Bezier"
 		"%{wks.location}/kEn/kEn/vendor/spdlog/include",
 		"%{wks.location}/kEn/kEn/src",
 		"%{wks.location}/kEn/kEn/vendor",
-		"%{IncludeDir.glm}"
+		"%{IncludeDir.glm}",
+		"%{IncludeDir.assimp}"
 	}
 
 	links {
