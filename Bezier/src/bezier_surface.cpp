@@ -1,6 +1,6 @@
 #include "bezier_surface.h"
 
-#include "kEn/core/lazy_variable.h"
+#include "kEn/lang/lazy_variable.h"
 #include "glm/gtc/type_ptr.hpp"
 #include "imgui/imgui.h"
 #include "ImGuizmo/ImGuizmo.h"

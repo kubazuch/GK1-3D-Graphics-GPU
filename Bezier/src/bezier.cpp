@@ -15,7 +15,6 @@
 #include "kEn/renderer/light.h"
 #include "kEn/renderer/texture.h"
 #include "kEn/renderer/mesh/model.h"
-#include "kEn/renderer/mesh/obj_model.h"
 
 enum class camera_mode
 {
@@ -27,12 +26,14 @@ enum class camera_mode
 class main_layer : public kEn::layer
 {
 public:
-	main_layer() : layer("BezierLayer"), ambient_color_{ 0.0f, 0.01f, 0.22f }, window_center_(640, 360), model_("REDACTED")
+	main_layer() : layer("BezierLayer"), ambient_color_{ 0.0f, 0.01f, 0.22f }, window_center_(640, 360)
 	{
 		dispatcher_ = std::make_unique<kEn::event_dispatcher>();
+		kEn::texture_spec specc = kEn::texture_spec().set_mipmap_levels(4).set_mag_filter(kEn::texture_spec::filter::NEAREST);
+		model_ = kEn::model::load(R"()", specc);
 
 		//camera_ = std::make_shared<kEn::orthographic_camera>(-16.f/9.f, 16.f / 9.f, -1.f, 1.f);
-		camera_ = std::make_shared<kEn::perspective_camera>(glm::radians(70.f), 16.f / 9.f, 0.01f, 100.f);
+		camera_ = std::make_shared<kEn::perspective_camera>(glm::radians(90.f), 16.f / 9.f, 0.01f, 100.f);
 		camera_->set_pos({ 0,0.5,1 });
 		camera_->look_at({ 0,0,0 }, { 0,1,0 });
 		camera_->set_parent(&camera_mount_);
@@ -99,19 +100,19 @@ public:
 			glm::vec3 direction{0.f};
 			if (kEn::input::is_key_pressed(kEn::key::up) || kEn::input::is_key_pressed(kEn::key::w))
 			{
-				direction -= camera_->get_transform().local_front();
+				direction += camera_->get_transform().local_front();
 			}
 			if (kEn::input::is_key_pressed(kEn::key::down) || kEn::input::is_key_pressed(kEn::key::s))
 			{
-				direction += camera_->get_transform().local_front();
-			}
-			if (kEn::input::is_key_pressed(kEn::key::left) || kEn::input::is_key_pressed(kEn::key::a))
-			{
-				direction -= camera_->get_transform().local_right();
+				direction -= camera_->get_transform().local_front();
 			}
 			if (kEn::input::is_key_pressed(kEn::key::right) || kEn::input::is_key_pressed(kEn::key::d))
 			{
 				direction += camera_->get_transform().local_right();
+			}
+			if (kEn::input::is_key_pressed(kEn::key::left) || kEn::input::is_key_pressed(kEn::key::a))
+			{
+				direction -= camera_->get_transform().local_right();
 			}
 			if (kEn::input::is_key_pressed(kEn::key::space) || kEn::input::is_key_pressed(kEn::key::q))
 			{
@@ -142,11 +143,11 @@ public:
 			glm::vec3 direction{0.f};
 			if (kEn::input::is_key_pressed(kEn::key::up) || kEn::input::is_key_pressed(kEn::key::w))
 			{
-				direction -= camera_->get_transform().local_front();
+				direction += camera_->get_transform().local_front();
 			}
 			if (kEn::input::is_key_pressed(kEn::key::down) || kEn::input::is_key_pressed(kEn::key::s))
 			{
-				direction += camera_->get_transform().local_front();
+				direction -= camera_->get_transform().local_front();
 			}
 			if (kEn::input::is_key_pressed(kEn::key::space) || kEn::input::is_key_pressed(kEn::key::q))
 			{
@@ -204,7 +205,7 @@ public:
 
 		kEn::renderer::begin_scene(camera_);
 		{
-			model_.render(*phong_);
+			model_->render(*phong_);
 			sphere_.render(*camera_, light_);
 			surface_.render(*camera_, light_);
 
@@ -362,7 +363,7 @@ private:
 
 	std::unique_ptr<kEn::shader> mouse_pick_shader_;
 
-	kEn::model model_;
+	std::shared_ptr<kEn::model> model_;
 	std::unique_ptr<kEn::shader> phong_;
 
 	glm::vec3 ambient_color_;
