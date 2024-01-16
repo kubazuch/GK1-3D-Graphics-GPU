@@ -22,8 +22,8 @@ sphere::sphere()
 	surface_shader_->set_int("u_VDensity", vertical_density);
 	surface_shader_->set_material("u_Material", material_);
 
-	transform_.set_scale({ 0.1f, 0.1f, 0.1f });
-	transform_.set_pos({ 0.2,0.2,0.2 });
+	transform_.set_local_scale({ 0.1f, 0.1f, 0.1f });
+	transform_.set_local_pos({ 0.2,0.2,0.2 });
 	
 	generate_vertex_buffer();
 }
@@ -33,7 +33,7 @@ void sphere::render(const kEn::camera& cam, const kEn::point_light& light) const
 	material_.bind();
 
 	surface_shader_->bind();
-	surface_shader_->set_float3("u_CameraPos", cam.get_transform().transformed_pos());
+	surface_shader_->set_float3("u_CameraPos", cam.transform().pos());
 	surface_shader_->set_light("u_Light", light);
 
 
@@ -73,24 +73,23 @@ void sphere::imgui(const kEn::camera& camera)
 	{
 		if (ImGui::TreeNode("Phong properties"))
 		{
-			if (ImGui::SliderFloat("ambient", &material_.ambient_factor.get(), 0, 1))
+			if (ImGui::SliderFloat("ambient", &material_.ambient_factor, 0, 1))
 			{
-				material_.ambient_factor.set_dirty();
+
 			}
 
-			if (ImGui::SliderFloat("diffuse", &material_.diffuse_factor.get(), 0, 1))
+			if (ImGui::SliderFloat("diffuse", &material_.diffuse_factor, 0, 1))
 			{
-				material_.diffuse_factor.set_dirty();
+
 			}
 
-			if (ImGui::SliderFloat("specular", &material_.specular_factor.get(), 0, 1))
+			if (ImGui::SliderFloat("specular", &material_.specular_factor, 0, 1))
 			{
-				material_.specular_factor.set_dirty();
+
 			}
 
-			if (ImGui::SliderFloat("shininess ", &material_.shininess_factor.get(), 1, 100))
+			if (ImGui::SliderFloat("shininess ", &material_.shininess_factor, 1, 100))
 			{
-				material_.shininess_factor.set_dirty();
 			}
 
 			surface_shader_->set_material("u_Material", material_);
@@ -115,7 +114,7 @@ void sphere::imgui(const kEn::camera& camera)
 
 			if (texture_type == 0)
 			{
-				if (ImGui::ColorEdit3("Color##1", glm::value_ptr(material_.color.get())))
+				if (ImGui::ColorEdit3("Color##1", glm::value_ptr(material_.color)))
 				{
 					surface_shader_->bind();
 					surface_shader_->set_float3("u_Material.color", material_.color);
@@ -123,13 +122,13 @@ void sphere::imgui(const kEn::camera& camera)
 			}
 			else
 			{
-				if (const auto texture = material_.texture())
+				if (const auto texture = material_.texture(kEn::texture_type::diffuse))
 					ImGui::Image((ImTextureID)texture->renderer_id(), ImVec2{ 250 * (float)texture->width() / (float)texture->height(), 250.f }, ImVec2{ 0.0f, 1.0f }, ImVec2{ 1.0f, 0.0f });
 				if (ImGui::Button("Select"))
 				{
 					if (const std::filesystem::path path = kEn::file_dialog::open_image_file(); !path.empty())
 					{
-						material_.set_texture(kEn::texture2D::create(path));
+						material_.set_texture(kEn::texture_type::diffuse, kEn::texture2D::create(path));
 					}
 				}
 			}
@@ -160,13 +159,13 @@ void sphere::imgui(const kEn::camera& camera)
 
 			if (normal_map_type)
 			{
-				if (const auto normal_texture = material_.normal_texture())
+				if (const auto normal_texture = material_.texture(kEn::texture_type::normal))
 					ImGui::Image((ImTextureID)normal_texture->renderer_id(), ImVec2{ 250 * (float)normal_texture->width() / (float)normal_texture->height(), 250.f }, ImVec2{ 0.0f, 1.0f }, ImVec2{ 1.0f, 0.0f });
 				if (ImGui::Button("Select"))
 				{
 					if (const std::filesystem::path path = kEn::file_dialog::open_image_file(); !path.empty())
 					{
-						material_.set_normal_texture(kEn::texture2D::create(path));
+						material_.set_texture(kEn::texture_type::normal, kEn::texture2D::create(path));
 					}
 				}
 
@@ -198,13 +197,13 @@ void sphere::imgui(const kEn::camera& camera)
 
 			if (texture_type == 1)
 			{
-				if (const auto texture = material_.ao_texture())
+				if (const auto texture = material_.texture(kEn::texture_type::ambient_occlusion))
 					ImGui::Image((ImTextureID)texture->renderer_id(), ImVec2{ 250 * (float)texture->width() / (float)texture->height(), 250.f }, ImVec2{ 0.0f, 1.0f }, ImVec2{ 1.0f, 0.0f });
 				if (ImGui::Button("Select"))
 				{
 					if (const std::filesystem::path path = kEn::file_dialog::open_image_file(); !path.empty())
 					{
-						material_.set_ao_texture(kEn::texture2D::create(path));
+						material_.set_texture(kEn::texture_type::ambient_occlusion, kEn::texture2D::create(path));
 					}
 				}
 			}
@@ -229,13 +228,13 @@ void sphere::imgui(const kEn::camera& camera)
 
 			if (texture_type == 1)
 			{
-				if (const auto texture = material_.height_texture())
+				if (const auto texture = material_.texture(kEn::texture_type::height))
 					ImGui::Image((ImTextureID)texture->renderer_id(), ImVec2{ 250 * (float)texture->width() / (float)texture->height(), 250.f }, ImVec2{ 0.0f, 1.0f }, ImVec2{ 1.0f, 0.0f });
 				if (ImGui::Button("Select"))
 				{
 					if (const std::filesystem::path path = kEn::file_dialog::open_image_file(); !path.empty())
 					{
-						material_.set_height_texture(kEn::texture2D::create(path));
+						material_.set_texture(kEn::texture_type::height, kEn::texture2D::create(path));
 					}
 				}
 			}

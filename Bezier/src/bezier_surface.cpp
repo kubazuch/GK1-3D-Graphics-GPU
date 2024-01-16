@@ -1,6 +1,5 @@
 #include "bezier_surface.h"
 
-#include "kEn/lang/lazy_variable.h"
 #include "glm/gtc/type_ptr.hpp"
 #include "imgui/imgui.h"
 #include "ImGuizmo/ImGuizmo.h"
@@ -67,18 +66,18 @@ void bezier_surface::reset_grid()
 		{
 			auto v = control_points_[i][j];
 
-			v->transform_.set_pos({ glm::mix(-0.5, 0.5, (float)i / 3.0f), .0f, glm::mix(-0.5, 0.5, (float)j / 3.0f) });
-			v->transform_.set_parent(&transform_);
-			v->transform_.set_scale(glm::vec3(0.015f));
+			v->transform_.set_local_pos({ glm::mix(-0.5, 0.5, (float)i / 3.0f), .0f, glm::mix(-0.5, 0.5, (float)j / 3.0f) });
+			v->transform_.set_parent(transform_);
+			v->transform_.set_local_scale(glm::vec3(0.015f));
 
 			bezier_surface_shader_->bind();
-			bezier_surface_shader_->set_float3("u_ControlPoints[" + std::to_string(i * M_ + j) + "]", v->transform_.pos());
+			bezier_surface_shader_->set_float3("u_ControlPoints[" + std::to_string(i * M_ + j) + "]", v->transform_.local_pos());
 
 			control_surface_shader_->bind();
-			control_surface_shader_->set_float3("u_ControlPoints[" + std::to_string(i * M_ + j) + "]", v->transform_.pos());
+			control_surface_shader_->set_float3("u_ControlPoints[" + std::to_string(i * M_ + j) + "]", v->transform_.local_pos());
 
 			bezier_normal_shader_->bind();
-			bezier_normal_shader_->set_float3("u_ControlPoints[" + std::to_string(i * M_ + j) + "]", v->transform_.pos());
+			bezier_normal_shader_->set_float3("u_ControlPoints[" + std::to_string(i * M_ + j) + "]", v->transform_.local_pos());
 		}
 	}
 }
@@ -99,7 +98,7 @@ void bezier_surface::render(const kEn::camera& cam, const kEn::point_light& ligh
 	material_.bind();
 
 	bezier_surface_shader_->bind();
-	bezier_surface_shader_->set_float3("u_CameraPos", cam.get_transform().transformed_pos());
+	bezier_surface_shader_->set_float3("u_CameraPos", cam.transform().pos());
 	bezier_surface_shader_->set_light("u_Light", light);
 
 	// Draw bezier surface
@@ -156,14 +155,14 @@ void bezier_surface::vertex_moved(bool update) const
 	if (update)
 		selected_point_->transform_.model_matrix_updated();
 	else
-		selected_point_->transform_.set_pos(selected_point_->transform_.pos());
+		selected_point_->transform_.set_local_pos(selected_point_->transform_.local_pos());
 
 	bezier_surface_shader_->bind();
-	bezier_surface_shader_->set_float3("u_ControlPoints[" + std::to_string(selected_point_->x * M_ + selected_point_->y) + "]", selected_point_->transform_.pos());
+	bezier_surface_shader_->set_float3("u_ControlPoints[" + std::to_string(selected_point_->x * M_ + selected_point_->y) + "]", selected_point_->transform_.local_pos());
 	control_surface_shader_->bind();
-	control_surface_shader_->set_float3("u_ControlPoints[" + std::to_string(selected_point_->x * M_ + selected_point_->y) + "]", selected_point_->transform_.pos());
+	control_surface_shader_->set_float3("u_ControlPoints[" + std::to_string(selected_point_->x * M_ + selected_point_->y) + "]", selected_point_->transform_.local_pos());
 	bezier_normal_shader_->bind();
-	bezier_normal_shader_->set_float3("u_ControlPoints[" + std::to_string(selected_point_->x * M_ + selected_point_->y) + "]", selected_point_->transform_.pos());
+	bezier_normal_shader_->set_float3("u_ControlPoints[" + std::to_string(selected_point_->x * M_ + selected_point_->y) + "]", selected_point_->transform_.local_pos());
 }
 
 void bezier_surface::imgui(const kEn::camera& camera)
@@ -186,8 +185,8 @@ void bezier_surface::imgui(const kEn::camera& camera)
 	{
 		if (selected_point_)
 		{
-			kEn::lazy_variable<glm::vec3>& k = selected_point_->transform_.pos();
-			if(ImGui::DragFloat3("Pos##1", glm::value_ptr(k.get()), 0.01f))
+			glm::vec3& k = selected_point_->transform_.local_pos();
+			if(ImGui::DragFloat3("Pos##1", glm::value_ptr(k), 0.01f))
 			{
 				vertex_moved(false);
 			}
@@ -221,24 +220,20 @@ void bezier_surface::imgui(const kEn::camera& camera)
 	{
 		if (ImGui::TreeNode("Phong properties"))
 		{
-			if (ImGui::SliderFloat("ambient", &material_.ambient_factor.get(), 0, 1))
+			if (ImGui::SliderFloat("ambient", &material_.ambient_factor, 0, 1))
 			{
-				material_.ambient_factor.set_dirty();
 			}
 
-			if (ImGui::SliderFloat("diffuse", &material_.diffuse_factor.get(), 0, 1))
+			if (ImGui::SliderFloat("diffuse", &material_.diffuse_factor, 0, 1))
 			{
-				material_.diffuse_factor.set_dirty();
 			}
 
-			if (ImGui::SliderFloat("specular", &material_.specular_factor.get(), 0, 1))
+			if (ImGui::SliderFloat("specular", &material_.specular_factor, 0, 1))
 			{
-				material_.specular_factor.set_dirty();
 			}
 
-			if (ImGui::SliderFloat("shininess ", &material_.shininess_factor.get(), 1, 100))
+			if (ImGui::SliderFloat("shininess ", &material_.shininess_factor, 1, 100))
 			{
-				material_.shininess_factor.set_dirty();
 			}
 
 			bezier_surface_shader_->set_material("u_Material", material_);
@@ -263,7 +258,7 @@ void bezier_surface::imgui(const kEn::camera& camera)
 
 			if (texture_type == 0)
 			{
-				if (ImGui::ColorEdit3("Color##1", glm::value_ptr(material_.color.get())))
+				if (ImGui::ColorEdit3("Color##1", glm::value_ptr(material_.color)))
 				{
 					bezier_surface_shader_->bind();
 					bezier_surface_shader_->set_float3("u_Material.color", material_.color);
@@ -271,13 +266,13 @@ void bezier_surface::imgui(const kEn::camera& camera)
 			}
 			else
 			{
-				if(const auto texture = material_.texture())
+				if(const auto texture = material_.texture(kEn::texture_type::diffuse))
 					ImGui::Image((ImTextureID)texture->renderer_id(), ImVec2{ 250 * (float)texture->width() / (float)texture->height(), 250.f }, ImVec2{ 0.0f, 1.0f }, ImVec2{ 1.0f, 0.0f });
 				if (ImGui::Button("Select"))
 				{
 					if (const std::filesystem::path path = kEn::file_dialog::open_image_file(); !path.empty())
 					{
-						material_.set_texture(kEn::texture2D::create(path));
+						material_.set_texture(kEn::texture_type::diffuse, kEn::texture2D::create(path));
 					}
 				}
 			}
@@ -308,13 +303,13 @@ void bezier_surface::imgui(const kEn::camera& camera)
 
 			if (normal_map_type)
 			{
-				if(const auto normal_texture = material_.normal_texture())
+				if (const auto normal_texture = material_.texture(kEn::texture_type::normal))
 					ImGui::Image((ImTextureID)normal_texture->renderer_id(), ImVec2{ 250 * (float)normal_texture->width() / (float)normal_texture->height(), 250.f }, ImVec2{ 0.0f, 1.0f }, ImVec2{ 1.0f, 0.0f });
 				if (ImGui::Button("Select"))
 				{
 					if (const std::filesystem::path path = kEn::file_dialog::open_image_file(); !path.empty())
 					{
-						material_.set_normal_texture(kEn::texture2D::create(path));
+						material_.set_texture(kEn::texture_type::normal, kEn::texture2D::create(path));
 					}
 				}
 
@@ -346,13 +341,13 @@ void bezier_surface::imgui(const kEn::camera& camera)
 
 			if (texture_type == 1)
 			{
-				if (const auto texture = material_.ao_texture())
+				if (const auto texture = material_.texture(kEn::texture_type::ambient_occlusion))
 					ImGui::Image((ImTextureID)texture->renderer_id(), ImVec2{ 250 * (float)texture->width() / (float)texture->height(), 250.f }, ImVec2{ 0.0f, 1.0f }, ImVec2{ 1.0f, 0.0f });
 				if (ImGui::Button("Select"))
 				{
 					if (const std::filesystem::path path = kEn::file_dialog::open_image_file(); !path.empty())
 					{
-						material_.set_ao_texture(kEn::texture2D::create(path));
+						material_.set_texture(kEn::texture_type::ambient_occlusion, kEn::texture2D::create(path));
 					}
 				}
 			}
@@ -377,13 +372,13 @@ void bezier_surface::imgui(const kEn::camera& camera)
 
 			if (texture_type == 1)
 			{
-				if (const auto texture = material_.height_texture())
+				if (const auto texture = material_.texture(kEn::texture_type::height))
 					ImGui::Image((ImTextureID)texture->renderer_id(), ImVec2{ 250 * (float)texture->width() / (float)texture->height(), 250.f }, ImVec2{ 0.0f, 1.0f }, ImVec2{ 1.0f, 0.0f });
 				if (ImGui::Button("Select"))
 				{
 					if (const std::filesystem::path path = kEn::file_dialog::open_image_file(); !path.empty())
 					{
-						material_.set_height_texture(kEn::texture2D::create(path));
+						material_.set_texture(kEn::texture_type::height, kEn::texture2D::create(path));
 					}
 				}
 			}
@@ -415,16 +410,16 @@ void bezier_surface::generate_vertex_buffer()
 	{
 		for (int j = 0; j < M_ - 1; ++j)
 		{
-			glm::vec3 pos = control_points_[i][j]->transform_.pos();
+			glm::vec3 pos = control_points_[i][j]->transform_.local_pos();
 			data.push_back({ i * M_ + j, 0.5f + pos.x , 0.5f + pos.z });
 
-			pos = control_points_[i + 1][j]->transform_.pos();
+			pos = control_points_[i + 1][j]->transform_.local_pos();
 			data.push_back({ (i + 1) * M_ + j, 0.5f + pos.x , 0.5f + pos.z });
 
-			pos = control_points_[i][j + 1]->transform_.pos();
+			pos = control_points_[i][j + 1]->transform_.local_pos();
 			data.push_back({ i * M_ + j + 1 , 0.5f + pos.x , 0.5f + pos.z });
 
-			pos = control_points_[i + 1][j + 1]->transform_.pos();
+			pos = control_points_[i + 1][j + 1]->transform_.local_pos();
 			data.push_back({ (i + 1) * M_ + j + 1, 0.5f + pos.x , 0.5f + pos.z });
 		}
 	}

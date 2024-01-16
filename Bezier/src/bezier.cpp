@@ -15,12 +15,42 @@
 #include "kEn/renderer/light.h"
 #include "kEn/renderer/texture.h"
 #include "kEn/renderer/mesh/model.h"
+#include "kEn/renderer/scene/game_object.h"
+#include "kEn/renderer/scene/core_components.h"
 
 enum class camera_mode
 {
 	none = 0,
 	free_look,
 	orbit
+};
+
+class obj_component : public kEn::game_component
+{
+public:
+	obj_component(const std::string& model = "sphere.obj")
+		: model_(model)
+	{
+		kEn::texture_spec spec;
+		spec.mag_filter = kEn::texture_spec::filter::NEAREST;
+		material_.set_texture(kEn::texture_type::diffuse, kEn::texture2D::create(R"(C:\Users\uguno\Desktop\mine\3\tex\red_wool.png)", spec));
+	}
+
+	[[nodiscard]] std::shared_ptr<game_component> clone() const override
+	{
+		return std::make_shared<obj_component>();
+	}
+	void update(float delta) override {}
+	void render(kEn::shader& shader) override
+	{
+		shader.set_material("u_Material", material_);
+		material_.bind();
+		kEn::renderer::submit(shader, *model_.vertex_array_, parent_.value().get().transform());
+	}
+
+private:
+	kEn::obj_model model_;
+	kEn::material material_;
 };
 
 class main_layer : public kEn::layer
@@ -32,11 +62,6 @@ public:
 		kEn::texture_spec specc = kEn::texture_spec().set_mipmap_levels(4).set_mag_filter(kEn::texture_spec::filter::NEAREST);
 		model_ = kEn::model::load(R"()", specc);
 
-		//camera_ = std::make_shared<kEn::orthographic_camera>(-16.f/9.f, 16.f / 9.f, -1.f, 1.f);
-		camera_ = std::make_shared<kEn::perspective_camera>(glm::radians(90.f), 16.f / 9.f, 0.01f, 100.f);
-		camera_->set_pos({ 0,0.5,1 });
-		camera_->look_at({ 0,0,0 }, { 0,1,0 });
-		camera_->set_parent(&camera_mount_);
 		mode_ = camera_mode::none;
 
 		kEn::framebuffer_spec spec;
@@ -49,21 +74,41 @@ public:
 
 		phong_ = kEn::shader::create("phong");
 
-		light_.transform.set_pos({ 0, 0.5, 0 });
-		light_.transform.set_scale(glm::vec3{0.02f});
+		light_.transform.set_local_pos({ 0, 0.5, 0 });
+		light_.transform.set_local_scale(glm::vec3{0.02f});
 
-		dispatcher_->subscribe<kEn::window_resize_event>(KEN_EVENT_SUBSCRIBER(camera_->on_window_resize));
-		dispatcher_->subscribe<kEn::window_resize_event>(KEN_EVENT_SUBSCRIBER(on_window_resize));
+		main.transform().set_local_scale(0.1f);
+		sphere1.transform().set_local_pos({ 0,5,0 });
+		sphere1.transform().set_local_scale(0.3f);
+		sphere2.transform().set_local_pos({ 5,0,0 });
+		main.add_children({ sphere1, sphere2 });
 
-		dispatcher_->subscribe<kEn::key_pressed_event>(KEN_EVENT_SUBSCRIBER(on_key_press));
-		dispatcher_->subscribe<kEn::mouse_button_pressed_event>(KEN_EVENT_SUBSCRIBER(on_mouse_click));
+		camera_object_.transform().set_local_pos({ 0,0.5,1 });
+		camera_object_.transform().look_at({ 0,0,0 });
+
+		main.add_component(std::make_shared<obj_component>());
+		sphere1.add_component(std::make_shared<obj_component>());
+		sphere2.add_component(std::make_shared<obj_component>("suzanne.obj"));
+		sphere2.add_component(std::make_shared<kEn::look_at_component>(camera_object_));
+
+		camera_object_.add_component(std::make_shared<kEn::look_at_component>(sphere2));
+		//camera_ = std::make_shared<kEn::orthographic_camera>(-16.f/9.f, 16.f / 9.f, -1.f, 1.f);
+		camera_ = std::make_shared<kEn::perspective_camera>(glm::radians(90.f), 16.f / 9.f, 0.01f, 100.f);
+		camera_object_.add_component(camera_);
 
 		surface_.set_ambient(ambient_color_);
 		sphere_.set_ambient(ambient_color_);
+
+		dispatcher_->subscribe<kEn::window_resize_event>(KEN_EVENT_SUBSCRIBER(on_window_resize));
+		dispatcher_->subscribe<kEn::key_pressed_event>(KEN_EVENT_SUBSCRIBER(on_key_press));
+		dispatcher_->subscribe<kEn::mouse_button_pressed_event>(KEN_EVENT_SUBSCRIBER(on_mouse_click));
 	}
 
 	void on_update(double delta, double) override
 	{
+		main.update_all(delta);
+		camera_object_.update(delta);
+
 		if (kEn::input::is_key_pressed(kEn::key::escape))
 		{
 			kEn::input::set_cursor_visible(true);
@@ -82,13 +127,13 @@ public:
 			if (rotY)
 			{
 				glm::quat rot({ 0, -glm::radians(delta_pos.x) * sensitivity, 0 });
-				camera_->rotate(rot);
+				camera_->transform().rotate(rot);
 			}
 
 			if(rotX)
 			{
 				glm::quat rot({ -glm::radians(delta_pos.y) * sensitivity, 0, 0 });
-				camera_->rotate_local(rot);
+				camera_->transform().rotate_local(rot);
 			}
 
 			if(rotX || rotY)
@@ -100,19 +145,19 @@ public:
 			glm::vec3 direction{0.f};
 			if (kEn::input::is_key_pressed(kEn::key::up) || kEn::input::is_key_pressed(kEn::key::w))
 			{
-				direction += camera_->get_transform().local_front();
+				direction += camera_->transform().local_front();
 			}
 			if (kEn::input::is_key_pressed(kEn::key::down) || kEn::input::is_key_pressed(kEn::key::s))
 			{
-				direction -= camera_->get_transform().local_front();
-			}
+				direction -= camera_->transform().local_front();
+		}
 			if (kEn::input::is_key_pressed(kEn::key::right) || kEn::input::is_key_pressed(kEn::key::d))
 			{
-				direction += camera_->get_transform().local_right();
+				direction += camera_->transform().local_right();
 			}
 			if (kEn::input::is_key_pressed(kEn::key::left) || kEn::input::is_key_pressed(kEn::key::a))
 			{
-				direction -= camera_->get_transform().local_right();
+				direction -= camera_->transform().local_right();
 			}
 			if (kEn::input::is_key_pressed(kEn::key::space) || kEn::input::is_key_pressed(kEn::key::q))
 			{
@@ -125,47 +170,8 @@ public:
 
 			if (direction.x || direction.y || direction.z)
 			{
-				camera_->fma(glm::normalize(direction), move_amount);
+				camera_->transform().fma(glm::normalize(direction), move_amount);
 			}
-		}
-
-		if (mode_ == camera_mode::orbit)
-		{
-			const float speed = 0.2f;
-			glm::vec2 delta_pos = kEn::input::get_mouse_pos() - window_center_;
-
-			if (delta_pos.x || delta_pos.y)
-			{
-				kEn::input::set_mouse_pos(window_center_);
-			}
-
-			float move_amount = kEn::input::is_key_pressed(kEn::key::left_control) ? 3.f * delta * speed : delta * speed;
-			glm::vec3 direction{0.f};
-			if (kEn::input::is_key_pressed(kEn::key::up) || kEn::input::is_key_pressed(kEn::key::w))
-			{
-				direction += camera_->get_transform().local_front();
-			}
-			if (kEn::input::is_key_pressed(kEn::key::down) || kEn::input::is_key_pressed(kEn::key::s))
-			{
-				direction -= camera_->get_transform().local_front();
-			}
-			if (kEn::input::is_key_pressed(kEn::key::space) || kEn::input::is_key_pressed(kEn::key::q))
-			{
-				direction += camera_->get_transform().local_up();
-			}
-			if (kEn::input::is_key_pressed(kEn::key::left_shift) || kEn::input::is_key_pressed(kEn::key::e))
-			{
-				direction -= camera_->get_transform().local_up();
-			}
-
-			if (direction.x || direction.y || direction.z)
-			{
-				camera_->fma(glm::normalize(direction), move_amount);
-				camera_->look_at(camera_mount_.pos(), { 0,1,0 });
-			}
-
-			camera_mount_.rotate({ 0,1,0 }, move_amount);
-			camera_->recalculate_view();
 		}
 
 		if (mode_ == camera_mode::none)
@@ -186,16 +192,17 @@ public:
 
 		const float speed = 0.1f;
 		static float time = 0.0f;
-		if (animate_light)
-		{
-			time += speed * delta;
-			glm::vec3 new_pos(glm::cos(13 * time), 0, glm::sin(13 * time));
+
+		main.transform().rotate({ 0,1,0 }, 2*delta);
 		
-			new_pos *= 0.5f * glm::sin(time);
-			new_pos.y = light_.transform.pos().get().y;
+		time += speed * delta;
+		glm::vec3 new_pos(glm::cos(13 * time), 0, glm::sin(13 * time));
 		
-			light_.transform.set_pos(new_pos);
-		}
+		new_pos *= 0.5f * glm::sin(time);
+		new_pos.y = main.transform().pos().y;
+		
+		main.transform().set_local_pos(new_pos);
+		
 	}
 
 	void on_render() override
@@ -205,22 +212,20 @@ public:
 
 		kEn::renderer::begin_scene(camera_);
 		{
-			model_->render(*phong_);
-			sphere_.render(*camera_, light_);
-			surface_.render(*camera_, light_);
+			main.render_all(*phong_);
 
 			// Draw control points for mouse picking
-			framebuffer_->bind();
-			framebuffer_->clear_attachment(0, 0);
-			framebuffer_->clear_attachment(1, -1);
-
-			mouse_pick_shader_->bind();
-			mouse_pick_shader_->set_int("u_Id", 113);
-			kEn::renderer::submit(*mouse_pick_shader_, *surface_.get_control_point_model().vertex_array_, light_.transform);
-
-			surface_.render_mouse_pick(*mouse_pick_shader_);
-
-			framebuffer_->unbind();
+			// framebuffer_->bind();
+			// framebuffer_->clear_attachment(0, 0);
+			// framebuffer_->clear_attachment(1, -1);
+			//
+			// mouse_pick_shader_->bind();
+			// mouse_pick_shader_->set_int("u_Id", 113);
+			// kEn::renderer::submit(*mouse_pick_shader_, *surface_.get_control_point_model().vertex_array_, light_.transform);
+			//
+			// surface_.render_mouse_pick(*mouse_pick_shader_);
+			//
+			// framebuffer_->unbind();
 		}
 		kEn::renderer::end_scene();
 	}
@@ -241,7 +246,7 @@ public:
 		ImGuiIO& io = ImGui::GetIO();
 		ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
 
-		if(mode_ == camera_mode::none)
+		if (mode_ == camera_mode::none)
 		{
 			if (light_selected_ && ImGuizmo::Manipulate(glm::value_ptr(camera_->view_matrix()), glm::value_ptr(camera_->projection_matrix()), ImGuizmo::TRANSLATE, ImGuizmo::LOCAL, glm::value_ptr(light_.transform.local_to_world_matrix()), NULL, NULL, NULL, NULL))
 			{
@@ -256,7 +261,7 @@ public:
 
 
 			ImGui::Begin("Sphere Surface");
-			if(ImGui::Checkbox("Gizmo", &sphere_.selected))
+			if (ImGui::Checkbox("Gizmo", &sphere_.selected))
 			{
 				light_selected_ = false;
 				surface_.selected_point_ = nullptr;
@@ -269,13 +274,13 @@ public:
 			ImGui::Begin("Common");
 			if (ImGui::CollapsingHeader("Light"))
 			{
-				if (ImGui::ColorEdit3("Color##2", glm::value_ptr(light_.color.get())))
+				if (ImGui::ColorEdit3("Color##2", glm::value_ptr(light_.color)))
 				{
-					light_.color.set_dirty();
+					// light_.color.set_dirty();
 				}
-				if (ImGui::DragFloat3("Pos##2", glm::value_ptr(light_.transform.pos().get()), 0.01f))
+				if (ImGui::DragFloat3("Pos##2", glm::value_ptr(light_.transform.local_pos()), 0.01f))
 				{
-					light_.transform.set_pos(light_.transform.pos());
+					light_.transform.set_dirty();
 				}
 
 				ImGui::Checkbox("Light animation", &animate_light);
@@ -296,6 +301,8 @@ public:
 	void on_event(kEn::base_event& event) override
 	{
 		dispatcher_->dispatch(event);
+		main.on_event(event);
+		camera_object_.on_event(event);
 	}
 
 	bool on_window_resize(kEn::window_resize_event& event)
@@ -312,13 +319,6 @@ public:
 			kEn::input::set_mouse_pos(window_center_);
 			kEn::input::set_cursor_visible(false);
 			mode_ = camera_mode::free_look;
-		}
-		else if (event.key() == kEn::key::o)
-		{
-			kEn::input::set_mouse_pos(window_center_);
-			kEn::input::set_cursor_visible(false);
-			mode_ = camera_mode::orbit;
-			camera_->look_at(camera_mount_.pos(), { 0,1,0 });
 		}
 
 		return mode_ != camera_mode::none;
@@ -356,7 +356,6 @@ private:
 	bezier_surface surface_;
 	sphere sphere_;
 	camera_mode mode_;
-	kEn::transform camera_mount_;
 	std::shared_ptr<kEn::camera> camera_;
 	std::unique_ptr<kEn::event_dispatcher> dispatcher_;
 	std::shared_ptr<kEn::framebuffer> framebuffer_;
@@ -365,6 +364,9 @@ private:
 
 	std::shared_ptr<kEn::model> model_;
 	std::unique_ptr<kEn::shader> phong_;
+
+	kEn::game_object main, model, sphere1, sphere2;
+	kEn::game_object camera_object_;
 
 	glm::vec3 ambient_color_;
 
