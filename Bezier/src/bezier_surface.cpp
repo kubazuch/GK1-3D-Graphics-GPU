@@ -258,11 +258,6 @@ void bezier_surface::imgui(const kEn::camera& camera)
 
 			if (texture_type == 0)
 			{
-				if (ImGui::ColorEdit3("Color##1", glm::value_ptr(material_.color)))
-				{
-					bezier_surface_shader_->bind();
-					bezier_surface_shader_->set_float3("u_Material.color", material_.color);
-				}
 			}
 			else
 			{
