@@ -78,11 +78,12 @@ public:
 
 		phong_->set_light("u_Light", light_);
 
-		sphere1.transform().set_local_pos({ 0,5,0 });
-		sphere2.transform().set_local_pos({ 5,0,0 });
-		main.add_children({ sphere1, sphere2 });
+		main.transform().set_local_pos({ 20, 0, 20 });
+		sphere1.transform().set_local_pos({ 3,0,0 });
+		sphere2.transform().set_local_pos({ 0,5,0 });
+		main.add_children({ sphere1, camera_object_ });
 
-		camera_object_.transform().set_local_pos({ 0,0,1 });
+		camera_object_.transform().set_local_pos({ 0,5,0 });
 
 		main.add_component(std::make_shared<obj_component>());
 		sphere1.add_component(std::make_shared<obj_component>());
@@ -92,9 +93,9 @@ public:
 		//camera_ = std::make_shared<kEn::orthographic_camera>(-16.f/9.f, 16.f / 9.f, -1.f, 1.f);
 		camera_ = std::make_shared<kEn::perspective_camera>(glm::radians(90.f), 16.f / 9.f, 0.01f, 100.f);
 		camera_object_.add_component(camera_);
-		camera_object_.add_component(std::make_shared<kEn::free_look_component>(0.1f));
-		camera_object_.add_component(std::make_shared<kEn::free_move_component>(2.f));
-		// camera_object_.add_component(std::make_shared<kEn::look_at_component>(sphere2));
+		// camera_object_.add_component(std::make_shared<kEn::free_look_component>(0.1f));
+		// camera_object_.add_component(std::make_shared<kEn::free_move_component>(2.f));
+		camera_object_.add_component(std::make_shared<kEn::look_at_component>(sphere1));
 
 		// surface_.set_ambient(ambient_color_);
 		// sphere_.set_ambient(ambient_color_);
@@ -108,8 +109,45 @@ public:
 		main.update_all(delta);
 		camera_object_.update(delta);
 
-		const float speed = 0.1f;
-		static float time = 0.0f;
+		static bool state = true;
+		static double progress = 0.0;
+		const double speed = 8.0;
+		const double radius = 3.;
+
+		static glm::vec3 front = main.transform().front();
+		static glm::vec3 left = -main.transform().right();
+		static glm::quat rot = glm::rotation(front, left);
+
+		progress += speed * delta;
+		if(state)
+		{
+			if(progress >= 40.)
+			{
+				main.transform().fma(main.transform().front(), progress - 40.);
+				state = !state;
+				progress = 0.0;
+			}
+			else
+			{
+				main.transform().fma(main.transform().front(), speed * delta);
+			}
+		}
+		else
+		{
+			if (progress >= radius / 2. * glm::pi<double>())
+			{
+				state = !state;
+				progress = 0.0;
+				main.transform().set_local_rot(rot);
+				// front = main.transform().front();
+				left = glm::vec3(left.z, 0, -left.x);
+				rot = glm::rotation(front, left);
+			}
+			else
+			{
+				main.transform().rotate({ 0,1,0 }, speed * delta / radius);
+			}
+		}
 
 		// main.transform().rotate({ 0,1,0 }, 2*delta);
 		
@@ -131,7 +169,7 @@ public:
 		kEn::renderer::begin_scene(camera_);
 		{
 			main.render_all(*phong_);
-			model_->render(*phong_, kEn::transform(glm::vec3(0,-10,0)));
+			model_->render(*phong_, kEn::transform(glm::vec3(0,-4,0)));
 
 			// Draw control points for mouse picking
 			// framebuffer_->bind();
@@ -164,6 +202,13 @@ public:
 	{
 		ImGui::Begin("Test");
 		model_->imgui();
+		ImGui::End();
+
+		ImGui::Begin("Info");
+		glm::vec3 p(main.transform().pos());
+		ImGui::InputFloat3("Pos", glm::value_ptr(p));
+		p = main.transform().front();
+		ImGui::InputFloat3("Front", glm::value_ptr(p));
 		ImGui::End();
 
 	// 	ImGuiIO& io = ImGui::GetIO();

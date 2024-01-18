@@ -19,8 +19,10 @@ void main()
 	vec3 normal = normalize(v_Normal);
 	vec4 object_color = texture(u_Material.diffuse[0], v_TexCoord);
 
-	if(object_color.a < 0.01)
+	if(object_color.a < 0.5)
 		discard;
+	else
+		object_color = vec4(object_color.rgb, 1.0);
 
 	vec3 light = u_Material.ka * u_Ambient;
 	
