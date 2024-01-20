@@ -1,14 +1,14 @@
 #pragma once
 
 #include "vertex.h"
-#include "kEn/camera/camera.h"
+#include "kEn/scene/camera/camera.h"
 #include "kEn/event/mouse_events.h"
 #include "kEn/renderer/framebuffer.h"
-#include "kEn/renderer/light.h"
+#include "kEn/scene/light.h"
 #include "kEn/renderer/shader.h"
 #include "kEn/renderer/texture.h"
 #include "kEn/renderer/vertex_array.h"
-#include "kEn/renderer/mesh/obj_model.h"
+#include "kEn/scene/mesh/obj_model.h"
 
 class bezier_surface
 {
@@ -43,7 +43,7 @@ private:
 	vertex* selected_point_;
 	kEn::transform transform_;
 
-	std::unique_ptr<kEn::shader> bezier_surface_shader_, control_point_shader_, control_surface_shader_, bezier_normal_shader_;
+	std::shared_ptr<kEn::shader> bezier_surface_shader_, control_point_shader_, control_surface_shader_, bezier_normal_shader_;
 	kEn::obj_model control_point_model_;
 
 	friend class main_layer;

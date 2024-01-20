@@ -5,7 +5,7 @@
 #include "ImGuizmo/ImGuizmo.h"
 #include "kEn/core/input.h"
 #include "kEn/renderer/shader.h"
-#include "kEn/renderer/light.h"
+#include "kEn/scene/light.h"
 #include "kEn/renderer/renderer.h"
 #include "kEn/renderer/render_command.h"
 #include "kEn/util/platform_utils.h"
@@ -123,7 +123,7 @@ void bezier_surface::render(const kEn::camera& cam, const kEn::point_light& ligh
 	// Draw light
 	control_point_shader_->bind();
 	control_point_shader_->set_float3("u_Color", light.color);
-	kEn::renderer::submit(*control_point_shader_, *control_point_model_.vertex_array_, light.transform);
+	kEn::renderer::submit(*control_point_shader_, *control_point_model_.vertex_array_, light.transform());
 
 	// Draw control points
 	control_point_shader_->set_float3("u_Color", vertex::vertex_color);

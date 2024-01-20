@@ -14,6 +14,6 @@ out vec3 v_Normal;
 void main() {
 	v_Pos = (u_M * vec4(a_Position, 1.0)).xyz;
 	v_TexCoord = a_TexCoord;
-	v_Normal = normalize((((u_M)) * vec4(a_Normal, 0.0)).xyz);
+	v_Normal = normalize((inverse(transpose(u_M)) * vec4(a_Normal, 0.0)).xyz);
 	gl_Position = u_VP * u_M * vec4(a_Position, 1.0);
 }

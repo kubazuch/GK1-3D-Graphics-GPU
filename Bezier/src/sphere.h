@@ -3,12 +3,12 @@
 #include "imgui/imgui.h"
 #include "ImGuizmo/ImGuizmo.h"
 
-#include "kEn/camera/camera.h"
+#include "kEn/scene/camera/camera.h"
 #include "kEn/core/transform.h"
-#include "kEn/renderer/light.h"
+#include "kEn/scene/light.h"
 #include "kEn/renderer/material.h"
 #include "kEn/renderer/shader.h"
-#include "kEn/renderer/mesh/obj_model.h"
+#include "kEn/scene/mesh/obj_model.h"
 
 namespace kEn
 {
@@ -37,7 +37,7 @@ private:
 	std::unique_ptr<kEn::vertex_array> vertex_array_;
 	kEn::transform transform_;
 
-	std::unique_ptr<kEn::shader> surface_shader_, normal_shader_;
+	std::shared_ptr<kEn::shader> surface_shader_, normal_shader_;
 
 	ImGuizmo::OPERATION operation_ = ImGuizmo::TRANSLATE;
 	friend class main_layer;

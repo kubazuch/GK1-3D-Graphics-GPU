@@ -1,0 +1,62 @@
+# Blender 3.6.5 MTL File: 'None'
+# www.blender.org
+
+newmtl Glass
+Ns 20.000006
+Ka 1.000000 1.000000 1.000000
+Kd 0.588000 0.588000 0.588000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 1
+map_Kd Glass_D.png
+
+newmtl Lamp_&_Glass
+Ns 20.000006
+Ka 0.5 0.5 0.5
+Ks 1.000000 1.000000 1.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 1
+map_Kd Lamp&Glass_D.jpeg
+
+newmtl Main_Body
+Ns 20.000006
+Ka 0.5 0.5 0.5
+Ks 1.000000 1.000000 1.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 1
+map_Kd Main Body_Pattern_D.jpeg
+
+newmtl SmallParts
+Ns 20.000006
+Ka 0.5 0.5 0.5
+Ks 1.000000 1.000000 1.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 1
+map_Kd SmlParts_D.jpeg
+
+newmtl Sticker
+Ns 20.000006
+Ka 0.5 0.5 0.5
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+illum 1
+map_Kd Sticker_D.jpeg
+
+newmtl Tire
+Ns 20.000006
+Ka 0.5 0.5 0.5
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 1
+map_Kd Tire_D.jpeg

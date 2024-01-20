@@ -10,9 +10,17 @@ in vec2 v_TexCoord;
 in vec3 v_Normal;
 
 uniform material u_Material;
-uniform point_light u_Light;
 uniform vec3 u_Ambient;
 uniform vec3 u_CameraPos;
+
+uniform int u_PointCount;
+uniform point_light u_PointLights[MAX_LIGHTS];
+uniform int u_DirectionalCount;
+uniform directional_light u_DirectionalLights[MAX_LIGHTS];
+uniform int u_SpotCount;
+uniform spot_light u_SpotLights[MAX_LIGHTS];
+
+uniform float u_Fog;
 
 void main()
 {
@@ -24,8 +32,21 @@ void main()
 	else
 		object_color = vec4(object_color.rgb, 1.0);
 
-	vec3 light = u_Material.ka * u_Ambient;
+	if(u_Material.emissive) {
+		color = object_color;
+	} else {
+		vec3 light = u_Material.ka * u_Ambient;
 	
-	light += calc_point_light(u_Light, u_Material, normal, v_Pos, normalize(u_CameraPos - v_Pos));
-	color = vec4(light, 1.0) * object_color;
+		for(int i = 0; i < u_PointCount; ++i)
+			light += calc_point_light(u_PointLights[i], u_Material, normal, v_Pos, normalize(u_CameraPos - v_Pos));
+	
+		for(int i = 0; i < u_SpotCount; ++i)
+			light += calc_spot_light(u_SpotLights[i], u_Material, normal, v_Pos, normalize(u_CameraPos - v_Pos));
+	
+		color = vec4(light, 1.0) * object_color;
+	}
+
+	float factor = length(u_CameraPos - v_Pos) * u_Fog;
+	float alpha = 1 / exp(factor * factor);
+	color = mix(vec4(u_Ambient, 1.0), color, alpha);
 }
